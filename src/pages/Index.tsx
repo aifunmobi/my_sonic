@@ -1,11 +1,21 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import ImageGenerator from "@/components/ImageGenerator";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
+      <div className="w-full max-w-4xl space-y-8 text-center">
+        <div className="space-y-4">
+          <h1 className="text-5xl sm:text-7xl font-bold gradient-text animate-fade-in">
+            AI Image Generator
+          </h1>
+          <p className="text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            Transform your ideas into stunning visuals with AI
+          </p>
+        </div>
+        
+        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <ImageGenerator />
+        </div>
       </div>
     </div>
   );
