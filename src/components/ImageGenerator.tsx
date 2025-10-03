@@ -40,15 +40,38 @@ const ImageGenerator = () => {
   const hasMore = savedImages.length > PREVIEW_LIMIT;
 
   useEffect(() => {
-    fetchSavedImages(false);
+    // Defer initial fetch to not block navigation
+    const timer = setTimeout(() => {
+      fetchSavedImagesWithRetry(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Refetch when "Show All" is toggled
   useEffect(() => {
     if (showAll) {
-      fetchSavedImages(true);
+      fetchSavedImagesWithRetry(true);
     }
   }, [showAll]);
+
+  const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, retryCount = 0) => {
+    const MAX_RETRIES = 2;
+    
+    try {
+      await fetchSavedImages(fetchAll);
+    } catch (error) {
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying image fetch (${retryCount + 1}/${MAX_RETRIES})...`);
+        setTimeout(() => {
+          fetchSavedImagesWithRetry(fetchAll, retryCount + 1);
+        }, 2000 * (retryCount + 1)); // Exponential backoff
+      } else {
+        console.error('Failed to fetch images after retries');
+        setIsLoadingImages(false);
+      }
+    }
+  };
 
   const fetchSavedImages = async (fetchAll: boolean = false) => {
     try {
@@ -161,8 +184,10 @@ const ImageGenerator = () => {
               });
 
             if (!insertError) {
-              // Refresh thumbnail display immediately after each image
-              await fetchSavedImages(showAll);
+              // Refresh thumbnail display immediately after each image (non-blocking)
+              fetchSavedImagesWithRetry(showAll).catch(err => 
+                console.error('Failed to refresh thumbnails:', err)
+              );
               
               // Set as the main displayed image
               setGeneratedImage(data.imageUrl);
