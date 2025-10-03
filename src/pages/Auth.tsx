@@ -64,7 +64,7 @@ export default function Auth() {
           });
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
+        setTimeout(() => reject(new Error('Request timeout')), 8000)
       );
 
       const { error } = await Promise.race([authPromise, timeoutPromise]) as any;
@@ -83,10 +83,13 @@ export default function Auth() {
       }
       
       toast.success(isLogin ? "Welcome back!" : "Account created! Welcome!");
+      navigate("/");
     } catch (error: any) {
       console.error('Auth error:', error);
       if (error.message === 'Request timeout') {
         toast.error("Connection timeout. Please check your internet and try again.");
+      } else if (error.message?.includes('Load failed')) {
+        toast.error("Login service is unreachable right now. Please try again shortly.");
       } else {
         toast.error("An unexpected error occurred. Please try again.");
       }
@@ -106,7 +109,7 @@ export default function Auth() {
       });
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
+        setTimeout(() => reject(new Error('Request timeout')), 8000)
       );
 
       const { error } = await Promise.race([authPromise, timeoutPromise]) as any;
@@ -122,6 +125,8 @@ export default function Auth() {
       console.error('Google auth error:', error);
       if (error.message === 'Request timeout') {
         toast.error("Connection timeout. Please check your internet and try again.");
+      } else if (error.message?.includes('Load failed')) {
+        toast.error("Login service is unreachable right now. Please try again shortly.");
       } else {
         toast.error("Failed to sign in with Google. Please try again.");
       }

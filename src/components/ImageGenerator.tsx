@@ -52,17 +52,29 @@ const ImageGenerator = () => {
 
   const fetchSavedImages = async (fetchAll: boolean = false) => {
     try {
+      setIsLoadingImages(true);
       const limit = fetchAll ? 1000 : PREVIEW_LIMIT;
-      const { data, error } = await supabase
+
+      const imagesPromise = supabase
         .from('generated_images')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
 
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Images request timeout')), 6000)
+      );
+
+      const { data, error } = await Promise.race([
+        imagesPromise,
+        timeoutPromise,
+      ]) as any;
+
       if (error) throw error;
       setSavedImages(data || []);
     } catch (error) {
       console.error('Error fetching images:', error);
+      setSavedImages([]);
     } finally {
       setIsLoadingImages(false);
     }
