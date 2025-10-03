@@ -57,7 +57,7 @@ const Index = () => {
       <div className="absolute top-4 right-4 z-10 flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="h-4 w-4" />
-          <span className="hidden sm:inline">{session.user.email}</span>
+          <span className="hidden sm:inline font-thin">{session.user.email}</span>
         </div>
         <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
           <LogOut className="h-4 w-4" />
@@ -67,7 +67,7 @@ const Index = () => {
       
       <div className="w-full max-w-4xl space-y-8 text-center">
         <div className="space-y-4">
-          <h1 className="text-5xl font-bold gradient-text animate-fade-in sm:text-4xl text-slate-200">Nano Banana Image Factory
+          <h1 className="text-5xl gradient-text animate-fade-in sm:text-4xl font-thin text-slate-200">Nano Banana Image Factory
         </h1>
           <p className="text-xl text-muted-foreground animate-fade-in" style={{
           animationDelay: '0.1s'
