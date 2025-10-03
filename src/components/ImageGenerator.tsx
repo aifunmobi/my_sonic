@@ -40,16 +40,24 @@ const ImageGenerator = () => {
   const hasMore = savedImages.length > PREVIEW_LIMIT;
 
   useEffect(() => {
-    fetchSavedImages();
+    fetchSavedImages(false);
   }, []);
 
-  const fetchSavedImages = async () => {
+  // Refetch when "Show All" is toggled
+  useEffect(() => {
+    if (showAll) {
+      fetchSavedImages(true);
+    }
+  }, [showAll]);
+
+  const fetchSavedImages = async (fetchAll: boolean = false) => {
     try {
+      const limit = fetchAll ? 1000 : PREVIEW_LIMIT;
       const { data, error } = await supabase
         .from('generated_images')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(limit);
 
       if (error) throw error;
       setSavedImages(data || []);
@@ -130,9 +138,6 @@ const ImageGenerator = () => {
 
           if (data?.imageUrl) {
             successCount++;
-            if (i === count - 1) {
-              setGeneratedImage(data.imageUrl);
-            }
             
             // Save to database
             const { error: insertError } = await supabase
@@ -144,7 +149,11 @@ const ImageGenerator = () => {
               });
 
             if (!insertError) {
-              fetchSavedImages();
+              // Refresh thumbnail display immediately after each image
+              await fetchSavedImages(showAll);
+              
+              // Set as the main displayed image
+              setGeneratedImage(data.imageUrl);
             }
           } else {
             console.error(`No image URL received for image ${i + 1}`);
