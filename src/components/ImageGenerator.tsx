@@ -24,7 +24,10 @@ const ImageGenerator = () => {
   const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0 });
   const [showAll, setShowAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
   const { toast } = useToast();
+  
+  const RATE_LIMIT_DELAY = 10000; // 10 seconds between generations
 
   const PREVIEW_LIMIT = 12;
   const SHOW_ALL_LIMIT = 36;
@@ -67,6 +70,29 @@ const ImageGenerator = () => {
       return;
     }
 
+    // Client-side rate limiting
+    const now = Date.now();
+    const timeSinceLastGen = now - lastGenerationTime;
+    if (timeSinceLastGen < RATE_LIMIT_DELAY) {
+      const remainingTime = Math.ceil((RATE_LIMIT_DELAY - timeSinceLastGen) / 1000);
+      toast({
+        title: "Rate limit",
+        description: `Please wait ${remainingTime} seconds before generating again`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Input validation
+    if (prompt.length > 2000) {
+      toast({
+        title: "Prompt too long",
+        description: "Please keep your prompt under 2000 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const count = parseInt(imageCount);
     setIsGenerating(true);
     setCurrentProgress({ current: 0, total: count });
@@ -79,6 +105,9 @@ const ImageGenerator = () => {
       if (!session?.session?.user) {
         throw new Error('Not authenticated');
       }
+
+      // Set last generation time at the start
+      setLastGenerationTime(now);
 
       for (let i = 0; i < count; i++) {
         setCurrentProgress({ current: i + 1, total: count });

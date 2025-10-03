@@ -1,9 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const promptSchema = z.object({
+  prompt: z.string()
+    .trim()
+    .min(1, "Prompt cannot be empty")
+    .max(2000, "Prompt must be less than 2000 characters")
+    .refine((val) => val.length > 0, "Prompt cannot be empty after trimming")
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,21 +21,26 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const body = await req.json();
     
-    if (!prompt) {
+    // Validate input
+    const validation = promptSchema.safeParse(body);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors[0]?.message || 'Invalid input';
       return new Response(
-        JSON.stringify({ error: 'Prompt is required' }),
+        JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { prompt } = validation.data;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating image with prompt:', prompt);
+    console.log('Generating image with prompt length:', prompt.length);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -59,8 +74,7 @@ serve(async (req) => {
         );
       }
       
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('AI gateway error:', response.status);
       return new Response(
         JSON.stringify({ error: 'Failed to generate image' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -83,7 +97,7 @@ serve(async (req) => {
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageUrl) {
-      console.error('No image URL in response:', JSON.stringify(data).substring(0, 200));
+      console.error('No image URL in response');
       return new Response(
         JSON.stringify({ error: 'No image was generated' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
