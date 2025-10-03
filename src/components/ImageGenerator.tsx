@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, Download, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,7 +22,19 @@ const ImageGenerator = () => {
   const [isLoadingImages, setIsLoadingImages] = useState(true);
   const [imageCount, setImageCount] = useState("1");
   const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0 });
+  const [showAll, setShowAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
   const { toast } = useToast();
+
+  const PREVIEW_LIMIT = 12;
+  const SHOW_ALL_LIMIT = 36;
+  
+  const displayedImages = showAll 
+    ? savedImages.slice(currentPage * SHOW_ALL_LIMIT, (currentPage + 1) * SHOW_ALL_LIMIT)
+    : savedImages.slice(0, PREVIEW_LIMIT);
+  
+  const totalPages = Math.ceil(savedImages.length / SHOW_ALL_LIMIT);
+  const hasMore = savedImages.length > PREVIEW_LIMIT;
 
   useEffect(() => {
     fetchSavedImages();
@@ -177,9 +189,57 @@ const ImageGenerator = () => {
       {/* Previous Images Gallery */}
       {!isLoadingImages && savedImages.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Your Generated Images</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">
+              Your Generated Images {showAll && `(${currentPage * SHOW_ALL_LIMIT + 1}-${Math.min((currentPage + 1) * SHOW_ALL_LIMIT, savedImages.length)} of ${savedImages.length})`}
+            </h2>
+            <div className="flex gap-2">
+              {showAll && totalPages > 1 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage === totalPages - 1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              {!showAll && hasMore && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAll(true);
+                    setCurrentPage(0);
+                  }}
+                >
+                  Show All
+                </Button>
+              )}
+              {showAll && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAll(false);
+                    setCurrentPage(0);
+                  }}
+                >
+                  Show Less
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {savedImages.map((image) => (
+            {displayedImages.map((image) => (
               <Card key={image.id} className="glass-card p-2 group relative overflow-hidden">
                 <div 
                   className="cursor-pointer"
