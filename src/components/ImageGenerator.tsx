@@ -48,9 +48,7 @@ const ImageGenerator = () => {
 
   // Refetch when "Show All" is toggled or page changes
   useEffect(() => {
-    if (showAll) {
-      fetchSavedImagesWithRetry(true, currentPage);
-    }
+    fetchSavedImagesWithRetry(showAll, currentPage);
   }, [showAll, currentPage]);
 
   const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, page: number = 0, retryCount = 0) => {
