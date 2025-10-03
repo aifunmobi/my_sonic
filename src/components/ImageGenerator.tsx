@@ -25,6 +25,7 @@ const ImageGenerator = () => {
   const [showAll, setShowAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
+  const [totalImageCount, setTotalImageCount] = useState(0);
   const { toast } = useToast();
   
   const RATE_LIMIT_DELAY = 10000; // 10 seconds between generations
@@ -76,11 +77,33 @@ const ImageGenerator = () => {
   const fetchSavedImages = async (fetchAll: boolean = false) => {
     try {
       setIsLoadingImages(true);
-      const limit = fetchAll ? 1000 : PREVIEW_LIMIT;
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log('No user found');
+        setIsLoadingImages(false);
+        return;
+      }
+
+      // First, get the total count
+      const { count, error: countError } = await supabase
+        .from('generated_images')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (countError) {
+        console.error('Error fetching count:', countError);
+      } else {
+        setTotalImageCount(count || 0);
+      }
+
+      // Then fetch the images with timeout
+      const limit = fetchAll ? SHOW_ALL_LIMIT : PREVIEW_LIMIT;
 
       const imagesPromise = supabase
         .from('generated_images')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -266,11 +289,11 @@ const ImageGenerator = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">
-              Your Generated Images 
+              Your Generated Images ({totalImageCount} Total)
               <span className="text-sm text-muted-foreground ml-2">
                 {showAll 
-                  ? `(${currentPage * SHOW_ALL_LIMIT + 1}-${Math.min((currentPage + 1) * SHOW_ALL_LIMIT, savedImages.length)} of ${savedImages.length})`
-                  : `(Showing ${displayedImages.length} of ${savedImages.length})`
+                  ? `Showing ${currentPage * SHOW_ALL_LIMIT + 1}-${Math.min((currentPage + 1) * SHOW_ALL_LIMIT, totalImageCount)}`
+                  : `Showing ${displayedImages.length}`
                 }
               </span>
             </h2>
@@ -295,7 +318,7 @@ const ImageGenerator = () => {
                   </Button>
                 </>
               )}
-              {hasMore && (
+              {totalImageCount > PREVIEW_LIMIT && (
                 !showAll ? (
                   <Button
                     variant="outline"
@@ -304,7 +327,7 @@ const ImageGenerator = () => {
                       setCurrentPage(0);
                     }}
                   >
-                    Show All ({savedImages.length})
+                    Show All
                   </Button>
                 ) : (
                   <Button
