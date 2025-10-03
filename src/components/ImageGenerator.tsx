@@ -201,11 +201,11 @@ const ImageGenerator = () => {
               prompt: prompt
             });
             if (!insertError) {
-              // Refresh thumbnail display immediately after each image (non-blocking)
-              fetchSavedImagesWithRetry(showAll, currentPage).catch(err => console.error('Failed to refresh thumbnails:', err));
-
               // Set as the main displayed image
               setGeneratedImage(data.imageUrl);
+
+              // Wait for display to update before continuing
+              await fetchSavedImagesWithRetry(showAll, currentPage);
             }
           } else {
             console.error(`No image URL received for image ${i + 1}`);
