@@ -33,7 +33,8 @@ const ImageGenerator = () => {
       const { data, error } = await supabase
         .from('generated_images')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1000);
 
       if (error) throw error;
       setSavedImages(data || []);
