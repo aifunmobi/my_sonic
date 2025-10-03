@@ -180,24 +180,36 @@ const ImageGenerator = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {savedImages.map((image) => (
               <Card key={image.id} className="glass-card p-2 group relative overflow-hidden">
-                <img
-                  src={image.image_url}
-                  alt={image.prompt}
-                  className="w-full h-48 object-cover rounded cursor-pointer transition-transform hover:scale-105"
+                <div 
+                  className="cursor-pointer"
                   onClick={() => setGeneratedImage(image.image_url)}
-                />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                >
+                  <img
+                    src={image.image_url}
+                    alt={image.prompt}
+                    className="w-full h-48 object-cover rounded transition-transform hover:scale-105"
+                  />
+                </div>
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
                   <Button
                     size="icon"
                     variant="secondary"
-                    onClick={() => handleDownload(image.image_url)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(image.image_url);
+                    }}
+                    className="pointer-events-auto"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="destructive"
-                    onClick={() => handleDelete(image.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(image.id);
+                    }}
+                    className="pointer-events-auto"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
