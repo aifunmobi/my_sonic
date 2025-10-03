@@ -266,7 +266,13 @@ const ImageGenerator = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">
-              Your Generated Images {showAll && `(${currentPage * SHOW_ALL_LIMIT + 1}-${Math.min((currentPage + 1) * SHOW_ALL_LIMIT, savedImages.length)} of ${savedImages.length})`}
+              Your Generated Images 
+              <span className="text-sm text-muted-foreground ml-2">
+                {showAll 
+                  ? `(${currentPage * SHOW_ALL_LIMIT + 1}-${Math.min((currentPage + 1) * SHOW_ALL_LIMIT, savedImages.length)} of ${savedImages.length})`
+                  : `(Showing ${displayedImages.length} of ${savedImages.length})`
+                }
+              </span>
             </h2>
             <div className="flex gap-2">
               {showAll && totalPages > 1 && (
@@ -289,27 +295,28 @@ const ImageGenerator = () => {
                   </Button>
                 </>
               )}
-              {!showAll && hasMore && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAll(true);
-                    setCurrentPage(0);
-                  }}
-                >
-                  Show All
-                </Button>
-              )}
-              {showAll && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAll(false);
-                    setCurrentPage(0);
-                  }}
-                >
-                  Show Less
-                </Button>
+              {hasMore && (
+                !showAll ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAll(true);
+                      setCurrentPage(0);
+                    }}
+                  >
+                    Show All ({savedImages.length})
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAll(false);
+                      setCurrentPage(0);
+                    }}
+                  >
+                    Show Less
+                  </Button>
+                )
               )}
             </div>
           </div>
