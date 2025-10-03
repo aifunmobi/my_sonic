@@ -249,20 +249,29 @@ const ImageGenerator = () => {
     document.body.removeChild(link);
   };
   const handleDelete = async (id: string) => {
+    // Optimistically remove from UI
+    const previousImages = savedImages;
+    setSavedImages(prev => prev.filter(img => img.id !== id));
+    setTotalImageCount(prev => prev - 1);
+    
     try {
       const {
         error
       } = await supabase.from('generated_images').delete().eq('id', id);
       if (error) throw error;
 
-      // Refetch current page to reflect deletion
-      await fetchSavedImagesWithRetry(showAll, currentPage);
       toast({
         title: "Image deleted",
         description: "Your image has been removed"
       });
+      
+      // Refetch to ensure consistency
+      fetchSavedImagesWithRetry(showAll, currentPage);
     } catch (error) {
       console.error('Error deleting image:', error);
+      // Restore previous state on error
+      setSavedImages(previousImages);
+      setTotalImageCount(prev => prev + 1);
       toast({
         title: "Delete failed",
         description: "Failed to delete image",
