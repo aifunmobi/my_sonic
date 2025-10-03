@@ -27,6 +27,7 @@ const ImageGenerator = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
   const [totalImageCount, setTotalImageCount] = useState(0);
+  const [isChangingView, setIsChangingView] = useState(false);
   const {
     toast
   } = useToast();
@@ -46,7 +47,10 @@ const ImageGenerator = () => {
 
   // Refetch when "Show All" is toggled or page changes
   useEffect(() => {
-    fetchSavedImagesWithRetry(showAll, currentPage);
+    setIsChangingView(true);
+    fetchSavedImagesWithRetry(showAll, currentPage).finally(() => {
+      setIsChangingView(false);
+    });
   }, [showAll, currentPage]);
   const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, page: number = 0, retryCount = 0) => {
     const MAX_RETRIES = 2;
@@ -296,17 +300,24 @@ const ImageGenerator = () => {
               {totalImageCount > PREVIEW_LIMIT && (!showAll ? <Button variant="outline" onClick={() => {
             setShowAll(true);
             setCurrentPage(0);
-          }}>
+          }} disabled={isChangingView}>
+                    {isChangingView ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Show All
                   </Button> : <Button variant="outline" onClick={() => {
             setShowAll(false);
             setCurrentPage(0);
-          }}>
+          }} disabled={isChangingView}>
+                    {isChangingView ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Show Less
                   </Button>)}
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 relative">
+            {isChangingView && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
             {displayedImages.map(image => <Card key={image.id} className="glass-card p-2 group relative overflow-hidden">
                 <div className="cursor-pointer" onClick={() => setGeneratedImage(image.image_url)}>
                   <img src={image.image_url} alt={image.prompt} className="w-full h-48 object-cover rounded transition-transform hover:scale-105" />
