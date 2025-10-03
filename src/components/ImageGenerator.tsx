@@ -58,6 +58,9 @@ const ImageGenerator = () => {
     setIsGenerating(true);
     setCurrentProgress({ current: 0, total: count });
     
+    let successCount = 0;
+    let failCount = 0;
+    
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.user) {
@@ -67,43 +70,66 @@ const ImageGenerator = () => {
       for (let i = 0; i < count; i++) {
         setCurrentProgress({ current: i + 1, total: count });
         
-        const { data, error } = await supabase.functions.invoke('generate-image', {
-          body: { prompt }
-        });
-
-        if (error) throw error;
-
-        if (data?.imageUrl) {
-          if (i === count - 1) {
-            setGeneratedImage(data.imageUrl);
+        try {
+          // Add a small delay between requests to avoid overwhelming the gateway
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
-          
-          // Save to database
-          const { error: insertError } = await supabase
-            .from('generated_images')
-            .insert({
-              user_id: session.session.user.id,
-              image_url: data.imageUrl,
-              prompt: prompt
-            });
 
-          if (!insertError) {
-            fetchSavedImages();
+          const { data, error } = await supabase.functions.invoke('generate-image', {
+            body: { prompt }
+          });
+
+          if (error) {
+            console.error(`Error generating image ${i + 1}:`, error);
+            failCount++;
+            continue;
           }
-        } else {
-          throw new Error('No image URL received');
+
+          if (data?.imageUrl) {
+            successCount++;
+            if (i === count - 1) {
+              setGeneratedImage(data.imageUrl);
+            }
+            
+            // Save to database
+            const { error: insertError } = await supabase
+              .from('generated_images')
+              .insert({
+                user_id: session.session.user.id,
+                image_url: data.imageUrl,
+                prompt: prompt
+              });
+
+            if (!insertError) {
+              fetchSavedImages();
+            }
+          } else {
+            console.error(`No image URL received for image ${i + 1}`);
+            failCount++;
+          }
+        } catch (imageError) {
+          console.error(`Failed to generate image ${i + 1}:`, imageError);
+          failCount++;
+          // Continue to next image instead of stopping
         }
       }
 
-      toast({
-        title: count > 1 ? "Images generated!" : "Image generated!",
-        description: count > 1 ? `${count} images are ready` : "Your image is ready",
-      });
+      if (successCount > 0) {
+        toast({
+          title: successCount > 1 ? "Images generated!" : "Image generated!",
+          description: failCount > 0 
+            ? `${successCount} succeeded, ${failCount} failed`
+            : count > 1 ? `${count} images are ready` : "Your image is ready",
+        });
+      } else {
+        throw new Error('All image generations failed');
+      }
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error('Error generating images:', error);
       toast({
         title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate image",
+        description: error instanceof Error ? error.message : "Failed to generate images",
         variant: "destructive",
       });
     } finally {

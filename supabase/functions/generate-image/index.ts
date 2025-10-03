@@ -67,12 +67,23 @@ serve(async (req) => {
       );
     }
 
-    const data = await response.json();
-    console.log('Image generation response received');
+    let data;
+    try {
+      const responseText = await response.text();
+      data = JSON.parse(responseText);
+      console.log('Image generation response received');
+    } catch (parseError) {
+      console.error('Failed to parse response:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse AI response' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageUrl) {
+      console.error('No image URL in response:', JSON.stringify(data).substring(0, 200));
       return new Response(
         JSON.stringify({ error: 'No image was generated' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
