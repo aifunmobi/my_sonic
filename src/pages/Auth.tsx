@@ -49,44 +49,47 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: validation.data.email,
-          password: validation.data.password,
-        });
-        
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast.error("Invalid email or password");
-          } else {
-            toast.error(error.message);
-          }
-          return;
+      // Add timeout protection
+      const authPromise = isLogin 
+        ? supabase.auth.signInWithPassword({
+            email: validation.data.email,
+            password: validation.data.password,
+          })
+        : supabase.auth.signUp({
+            email: validation.data.email,
+            password: validation.data.password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+            },
+          });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+
+      const { error } = await Promise.race([authPromise, timeoutPromise]) as any;
+      
+      if (error) {
+        if (error.message === 'Request timeout') {
+          toast.error("Connection timeout. Please check your internet and try again.");
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password");
+        } else if (error.message.includes("already registered")) {
+          toast.error("This email is already registered. Please sign in instead.");
+        } else {
+          toast.error(error.message);
         }
-        
-        toast.success("Welcome back!");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email: validation.data.email,
-          password: validation.data.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast.error("This email is already registered. Please sign in instead.");
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-        
-        toast.success("Account created! Welcome!");
+        return;
       }
+      
+      toast.success(isLogin ? "Welcome back!" : "Account created! Welcome!");
     } catch (error: any) {
-      toast.error("An unexpected error occurred");
+      console.error('Auth error:', error);
+      if (error.message === 'Request timeout') {
+        toast.error("Connection timeout. Please check your internet and try again.");
+      } else {
+        toast.error("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -95,18 +98,33 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const authPromise = supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/`,
         },
       });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+
+      const { error } = await Promise.race([authPromise, timeoutPromise]) as any;
       
       if (error) {
-        toast.error(error.message);
+        if (error.message === 'Request timeout') {
+          toast.error("Connection timeout. Please check your internet and try again.");
+        } else {
+          toast.error(error.message);
+        }
       }
     } catch (error: any) {
-      toast.error("Failed to sign in with Google");
+      console.error('Google auth error:', error);
+      if (error.message === 'Request timeout') {
+        toast.error("Connection timeout. Please check your internet and try again.");
+      } else {
+        toast.error("Failed to sign in with Google. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
