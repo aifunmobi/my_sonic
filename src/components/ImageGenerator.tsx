@@ -104,7 +104,7 @@ const ImageGenerator = () => {
         .range(offset, offset + limit - 1);
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Images request timeout')), 6000)
+        setTimeout(() => reject(new Error('Images request timeout')), 15000)
       );
 
       const { data, error } = await Promise.race([
@@ -116,7 +116,7 @@ const ImageGenerator = () => {
       setSavedImages(data || []);
     } catch (error) {
       console.error('Error fetching images:', error);
-      setSavedImages([]);
+      // Keep existing images on error to avoid clearing the gallery
     } finally {
       setIsLoadingImages(false);
     }
@@ -283,7 +283,7 @@ const ImageGenerator = () => {
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8">
       {/* Previous Images Gallery */}
-      {!isLoadingImages && savedImages.length > 0 && (
+      {savedImages.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">
