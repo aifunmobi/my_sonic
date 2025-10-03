@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -29,6 +29,7 @@ const ImageGenerator = () => {
   const [totalImageCount, setTotalImageCount] = useState(0);
   const [isChangingView, setIsChangingView] = useState(false);
   const [shouldStopGenerating, setShouldStopGenerating] = useState(false);
+  const stopGeneratingRef = useRef(false);
   const {
     toast
   } = useToast();
@@ -152,6 +153,7 @@ const ImageGenerator = () => {
     const count = parseInt(imageCount);
     setIsGenerating(true);
     setShouldStopGenerating(false);
+    stopGeneratingRef.current = false;
     setCurrentProgress({
       current: 0,
       total: count
@@ -169,11 +171,11 @@ const ImageGenerator = () => {
       // Set last generation time at the start
       setLastGenerationTime(now);
       for (let i = 0; i < count; i++) {
-        // Check if user requested to stop
-        if (shouldStopGenerating) {
+        // Check if user requested to stop (using ref for immediate check)
+        if (stopGeneratingRef.current) {
           toast({
             title: "Generation stopped",
-            description: `Stopped after ${successCount} successful generations`
+            description: `Stopped after ${successCount} successful ${successCount === 1 ? 'generation' : 'generations'}`
           });
           break;
         }
@@ -386,7 +388,10 @@ const ImageGenerator = () => {
               Generate {parseInt(imageCount) > 1 ? 'Images' : 'Image'}
             </Button>
           ) : (
-            <Button onClick={() => setShouldStopGenerating(true)} disabled={shouldStopGenerating} variant="destructive" className="flex-[2] h-14 text-lg font-semibold">
+            <Button onClick={() => {
+              stopGeneratingRef.current = true;
+              setShouldStopGenerating(true);
+            }} disabled={shouldStopGenerating} variant="destructive" className="flex-[2] h-14 text-lg font-semibold">
               {shouldStopGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
