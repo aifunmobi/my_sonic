@@ -28,6 +28,7 @@ const ImageGenerator = () => {
   const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
   const [totalImageCount, setTotalImageCount] = useState(0);
   const [isChangingView, setIsChangingView] = useState(false);
+  const [shouldStopGenerating, setShouldStopGenerating] = useState(false);
   const {
     toast
   } = useToast();
@@ -150,6 +151,7 @@ const ImageGenerator = () => {
     }
     const count = parseInt(imageCount);
     setIsGenerating(true);
+    setShouldStopGenerating(false);
     setCurrentProgress({
       current: 0,
       total: count
@@ -167,6 +169,15 @@ const ImageGenerator = () => {
       // Set last generation time at the start
       setLastGenerationTime(now);
       for (let i = 0; i < count; i++) {
+        // Check if user requested to stop
+        if (shouldStopGenerating) {
+          toast({
+            title: "Generation stopped",
+            description: `Stopped after ${successCount} successful generations`
+          });
+          break;
+        }
+        
         setCurrentProgress({
           current: i + 1,
           total: count
@@ -367,17 +378,27 @@ const ImageGenerator = () => {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()} className="flex-[2] h-14 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all" style={{
-          boxShadow: 'var(--shadow-glow)'
-        }}>
-            {isGenerating ? <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generating {currentProgress.current}/{currentProgress.total}...
-              </> : <>
-                <Sparkles className="mr-2 h-5 w-5" />
-                Generate {parseInt(imageCount) > 1 ? 'Images' : 'Image'}
-              </>}
-          </Button>
+          {!isGenerating ? (
+            <Button onClick={handleGenerate} disabled={!prompt.trim()} className="flex-[2] h-14 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all" style={{
+              boxShadow: 'var(--shadow-glow)'
+            }}>
+              <Sparkles className="mr-2 h-5 w-5" />
+              Generate {parseInt(imageCount) > 1 ? 'Images' : 'Image'}
+            </Button>
+          ) : (
+            <Button onClick={() => setShouldStopGenerating(true)} disabled={shouldStopGenerating} variant="destructive" className="flex-[2] h-14 text-lg font-semibold">
+              {shouldStopGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Stopping...
+                </>
+              ) : (
+                <>
+                  Stop Generation ({currentProgress.current}/{currentProgress.total})
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </Card>
 
