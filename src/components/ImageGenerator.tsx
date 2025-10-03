@@ -282,6 +282,16 @@ const ImageGenerator = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8">
+      {/* Loading state */}
+      {isLoadingImages && savedImages.length === 0 && (
+        <Card className="glass-card p-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading Images, Please Wait...</p>
+          </div>
+        </Card>
+      )}
+      
       {/* Previous Images Gallery */}
       {savedImages.length > 0 && (
         <div className="space-y-4">
