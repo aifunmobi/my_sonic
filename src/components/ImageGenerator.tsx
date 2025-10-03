@@ -33,12 +33,9 @@ const ImageGenerator = () => {
   const PREVIEW_LIMIT = 12;
   const SHOW_ALL_LIMIT = 36;
   
-  const displayedImages = showAll 
-    ? savedImages.slice(currentPage * SHOW_ALL_LIMIT, (currentPage + 1) * SHOW_ALL_LIMIT)
-    : savedImages.slice(0, PREVIEW_LIMIT);
+  const displayedImages = savedImages;
   
-  const totalPages = Math.ceil(savedImages.length / SHOW_ALL_LIMIT);
-  const hasMore = savedImages.length > PREVIEW_LIMIT;
+  const totalPages = Math.ceil(totalImageCount / SHOW_ALL_LIMIT);
 
   useEffect(() => {
     // Defer initial fetch to not block navigation
@@ -49,23 +46,23 @@ const ImageGenerator = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Refetch when "Show All" is toggled
+  // Refetch when "Show All" is toggled or page changes
   useEffect(() => {
     if (showAll) {
-      fetchSavedImagesWithRetry(true);
+      fetchSavedImagesWithRetry(true, currentPage);
     }
-  }, [showAll]);
+  }, [showAll, currentPage]);
 
-  const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, retryCount = 0) => {
+  const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, page: number = 0, retryCount = 0) => {
     const MAX_RETRIES = 2;
     
     try {
-      await fetchSavedImages(fetchAll);
+      await fetchSavedImages(fetchAll, page);
     } catch (error) {
       if (retryCount < MAX_RETRIES) {
         console.log(`Retrying image fetch (${retryCount + 1}/${MAX_RETRIES})...`);
         setTimeout(() => {
-          fetchSavedImagesWithRetry(fetchAll, retryCount + 1);
+          fetchSavedImagesWithRetry(fetchAll, page, retryCount + 1);
         }, 2000 * (retryCount + 1)); // Exponential backoff
       } else {
         console.error('Failed to fetch images after retries');
@@ -74,7 +71,7 @@ const ImageGenerator = () => {
     }
   };
 
-  const fetchSavedImages = async (fetchAll: boolean = false) => {
+  const fetchSavedImages = async (fetchAll: boolean = false, page: number = 0) => {
     try {
       setIsLoadingImages(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -97,15 +94,16 @@ const ImageGenerator = () => {
         setTotalImageCount(count || 0);
       }
 
-      // Then fetch the images with timeout
+      // Then fetch the images with timeout and pagination
       const limit = fetchAll ? SHOW_ALL_LIMIT : PREVIEW_LIMIT;
+      const offset = fetchAll ? page * SHOW_ALL_LIMIT : 0;
 
       const imagesPromise = supabase
         .from('generated_images')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .range(offset, offset + limit - 1);
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Images request timeout')), 6000)
@@ -208,7 +206,7 @@ const ImageGenerator = () => {
 
             if (!insertError) {
               // Refresh thumbnail display immediately after each image (non-blocking)
-              fetchSavedImagesWithRetry(showAll).catch(err => 
+              fetchSavedImagesWithRetry(showAll, currentPage).catch(err => 
                 console.error('Failed to refresh thumbnails:', err)
               );
               
@@ -267,7 +265,9 @@ const ImageGenerator = () => {
 
       if (error) throw error;
 
-      setSavedImages(savedImages.filter(img => img.id !== id));
+      // Refetch current page to reflect deletion
+      await fetchSavedImagesWithRetry(showAll, currentPage);
+      
       toast({
         title: "Image deleted",
         description: "Your image has been removed",
