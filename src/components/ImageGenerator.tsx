@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ const ImageGenerator = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [savedImages, setSavedImages] = useState<GeneratedImage[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
+  const [imageCount, setImageCount] = useState("1");
+  const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,20 +54,31 @@ const ImageGenerator = () => {
       return;
     }
 
+    const count = parseInt(imageCount);
     setIsGenerating(true);
+    setCurrentProgress({ current: 0, total: count });
+    
     try {
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt }
-      });
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.user) {
+        throw new Error('Not authenticated');
+      }
 
-      if (error) throw error;
-
-      if (data?.imageUrl) {
-        setGeneratedImage(data.imageUrl);
+      for (let i = 0; i < count; i++) {
+        setCurrentProgress({ current: i + 1, total: count });
         
-        // Save to database
-        const { data: session } = await supabase.auth.getSession();
-        if (session?.session?.user) {
+        const { data, error } = await supabase.functions.invoke('generate-image', {
+          body: { prompt }
+        });
+
+        if (error) throw error;
+
+        if (data?.imageUrl) {
+          if (i === count - 1) {
+            setGeneratedImage(data.imageUrl);
+          }
+          
+          // Save to database
           const { error: insertError } = await supabase
             .from('generated_images')
             .insert({
@@ -76,15 +90,15 @@ const ImageGenerator = () => {
           if (!insertError) {
             fetchSavedImages();
           }
+        } else {
+          throw new Error('No image URL received');
         }
-
-        toast({
-          title: "Image generated!",
-          description: "Your image is ready",
-        });
-      } else {
-        throw new Error('No image URL received');
       }
+
+      toast({
+        title: count > 1 ? "Images generated!" : "Image generated!",
+        description: count > 1 ? `${count} images are ready` : "Your image is ready",
+      });
     } catch (error) {
       console.error('Error generating image:', error);
       toast({
@@ -94,6 +108,7 @@ const ImageGenerator = () => {
       });
     } finally {
       setIsGenerating(false);
+      setCurrentProgress({ current: 0, total: 0 });
     }
   };
 
@@ -177,24 +192,41 @@ const ImageGenerator = () => {
           className="min-h-[120px] bg-input/50 border-border/50 resize-none text-lg"
           disabled={isGenerating}
         />
-        <Button
-          onClick={handleGenerate}
-          disabled={isGenerating || !prompt.trim()}
-          className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all"
-          style={{ boxShadow: 'var(--shadow-glow)' }}
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-5 w-5" />
-              Generate Image
-            </>
-          )}
-        </Button>
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label className="text-sm font-medium mb-2 block">Number of images</label>
+            <Select value={imageCount} onValueChange={setImageCount} disabled={isGenerating}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select count" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <SelectItem key={num} value={num.toString()}>
+                    {num} {num === 1 ? 'image' : 'images'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="flex-[2] h-14 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all"
+            style={{ boxShadow: 'var(--shadow-glow)' }}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Generating {currentProgress.current}/{currentProgress.total}...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-5 w-5" />
+                Generate {parseInt(imageCount) > 1 ? 'Images' : 'Image'}
+              </>
+            )}
+          </Button>
+        </div>
       </Card>
 
       {generatedImage && (
