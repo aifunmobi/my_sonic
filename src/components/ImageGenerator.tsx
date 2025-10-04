@@ -55,7 +55,7 @@ const ImageGenerator = () => {
     });
   }, [showAll, currentPage]);
   const fetchSavedImagesWithRetry = async (fetchAll: boolean = false, page: number = 0, retryCount = 0) => {
-    const MAX_RETRIES = 2;
+    const MAX_RETRIES = 3;
     try {
       await fetchSavedImages(fetchAll, page);
     } catch (error) {
@@ -93,16 +93,52 @@ const ImageGenerator = () => {
       const limit = fetchAll ? SHOW_ALL_LIMIT : PREVIEW_LIMIT;
       const offset = fetchAll ? page * SHOW_ALL_LIMIT : 0;
       
-      const { data, error, count } = await supabase
-        .from('generated_images')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+      // Fetch images (chunked for large payloads to avoid timeouts)
+      let images: GeneratedImage[] = [];
+      const baseSelect = () =>
+        supabase
+          .from('generated_images')
+          .select('id, image_url, prompt, created_at');
 
-      if (error) throw error;
-      setSavedImages(data || []);
-      setTotalImageCount(count || 0);
+      if (fetchAll) {
+        const half = Math.ceil(limit / 2);
+        const ranges: Array<[number, number]> = [
+          [offset, offset + half - 1],
+          [offset + half, offset + limit - 1],
+        ];
+
+        for (const [start, end] of ranges) {
+          if (start > end) continue;
+          const { data: chunk, error: chunkError } = await baseSelect()
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .range(start, end);
+          if (chunkError) throw chunkError;
+          images = images.concat((chunk as GeneratedImage[]) || []);
+        }
+      } else {
+        const { data, error } = await baseSelect()
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+        if (error) throw error;
+        images = (data as GeneratedImage[]) || [];
+      }
+
+      setSavedImages(images);
+
+      // Fetch count separately (non-blocking & fast)
+      supabase
+        .from('generated_images')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .then(({ count, error: countError }) => {
+          if (countError) {
+            console.error('Error fetching count:', countError);
+          } else {
+            setTotalImageCount(count || 0);
+          }
+        });
     } catch (error) {
       console.error('Error fetching images:', error);
       throw error; // Re-throw to let retry logic handle it
