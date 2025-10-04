@@ -84,36 +84,38 @@ const ImageGenerator = () => {
         return;
       }
 
-      // First, get the total count
-      const {
-        count,
-        error: countError
-      } = await supabase.from('generated_images').select('*', {
-        count: 'exact',
-        head: true
-      }).eq('user_id', user.id);
-      if (countError) {
-        console.error('Error fetching count:', countError);
-      } else {
-        setTotalImageCount(count || 0);
-      }
-
-      // Then fetch the images with timeout and pagination
+      // Fetch images immediately (indexes should make this fast)
       const limit = fetchAll ? SHOW_ALL_LIMIT : PREVIEW_LIMIT;
       const offset = fetchAll ? page * SHOW_ALL_LIMIT : 0;
-      const imagesPromise = supabase.from('generated_images').select('*').eq('user_id', user.id).order('created_at', {
-        ascending: false
-      }).range(offset, offset + limit - 1);
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Images request timeout')), 15000));
+      
       const {
         data,
         error
-      } = (await Promise.race([imagesPromise, timeoutPromise])) as any;
+      } = await supabase.from('generated_images').select('*').eq('user_id', user.id).order('created_at', {
+        ascending: false
+      }).range(offset, offset + limit - 1);
+      
       if (error) throw error;
       setSavedImages(data || []);
+
+      // Fetch count separately (non-blocking)
+      supabase.from('generated_images').select('*', {
+        count: 'exact',
+        head: true
+      }).eq('user_id', user.id).then(({ count, error: countError }) => {
+        if (countError) {
+          console.error('Error fetching count:', countError);
+        } else {
+          setTotalImageCount(count || 0);
+        }
+      });
     } catch (error) {
       console.error('Error fetching images:', error);
-      // Keep existing images on error to avoid clearing the gallery
+      toast({
+        title: "Failed to load images",
+        description: "Please refresh the page to try again",
+        variant: "destructive"
+      });
     } finally {
       setIsLoadingImages(false);
     }
