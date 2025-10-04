@@ -69,7 +69,7 @@ const Index = () => {
         <div className="space-y-3 sm:space-y-4">
           <h1 className="text-3xl sm:text-4xl md:text-5xl gradient-text animate-fade-in font-thin text-slate-200">Nano Banana Image Factory
         </h1>
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground animate-fade-in" style={{
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground animate-fade-in mt-[5px]" style={{
           animationDelay: '0.1s'
         }}>
             Transform your ideas into stunning visuals with AI
