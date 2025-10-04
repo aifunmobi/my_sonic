@@ -214,11 +214,8 @@ const ImageGenerator = () => {
               prompt: prompt
             });
             if (!insertError) {
-              // Set as the main displayed image
+              // Set as the main displayed image (last generated)
               setGeneratedImage(data.imageUrl);
-
-              // Wait for display to update before continuing
-              await fetchSavedImagesWithRetry(showAll, currentPage);
             }
           } else {
             console.error(`No image URL received for image ${i + 1}`);
@@ -231,6 +228,10 @@ const ImageGenerator = () => {
         }
       }
       if (successCount > 0) {
+        // Reset to page 0 and refresh to show new images at the top
+        setCurrentPage(0);
+        await fetchSavedImagesWithRetry(showAll, 0);
+        
         toast({
           title: successCount > 1 ? "Images generated!" : "Image generated!",
           description: failCount > 0 ? `${successCount} succeeded, ${failCount} failed` : count > 1 ? `${count} images are ready` : "Your image is ready"
