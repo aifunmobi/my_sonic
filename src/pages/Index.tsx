@@ -53,23 +53,23 @@ const Index = () => {
   if (!session) {
     return null;
   }
-  return <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <User className="h-4 w-4" />
-          <span className="hidden sm:inline font-thin">{session.user.email}</span>
+  return <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <User className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline font-thin truncate max-w-[150px] md:max-w-none">{session.user.email}</span>
         </div>
-        <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
-          <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">Sign Out</span>
+        <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-1 sm:gap-2 h-8 sm:h-9 px-2 sm:px-3">
+          <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline text-xs sm:text-sm">Sign Out</span>
         </Button>
       </div>
       
-      <div className="w-full max-w-4xl space-y-8 text-center">
-        <div className="space-y-4">
-          <h1 className="text-5xl gradient-text animate-fade-in sm:text-4xl font-thin text-slate-200">Nano Banana Image Factory
+      <div className="w-full max-w-7xl space-y-6 sm:space-y-8 text-center px-2 sm:px-4">
+        <div className="space-y-3 sm:space-y-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl gradient-text animate-fade-in font-thin text-slate-200">Nano Banana Image Factory
         </h1>
-          <p className="text-xl text-muted-foreground animate-fade-in" style={{
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground animate-fade-in" style={{
           animationDelay: '0.1s'
         }}>
             Transform your ideas into stunning visuals with AI

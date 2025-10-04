@@ -292,7 +292,7 @@ const ImageGenerator = () => {
       });
     }
   };
-  return <div className="w-full max-w-6xl mx-auto space-y-8">
+  return <div className="w-full mx-auto space-y-6 sm:space-y-8 px-2 sm:px-4">
       {/* Loading state */}
       {isLoadingImages && savedImages.length === 0 && <Card className="glass-card p-8">
           <div className="flex flex-col items-center justify-center space-y-4">
@@ -334,7 +334,7 @@ const ImageGenerator = () => {
                   </Button>)}
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 relative">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 relative">
             {isChangingView && (
               <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -364,13 +364,13 @@ const ImageGenerator = () => {
               </Card>)}
           </div>
         </div>}
-      <Card className="glass-card p-6 space-y-4">
-        <Textarea placeholder="Describe the image you want to generate... (e.g., 'A serene mountain landscape at sunset with a crystal clear lake')" value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[120px] bg-input/50 border-border/50 resize-none text-lg" disabled={isGenerating} />
-        <div className="flex gap-4 items-end">
+      <Card className="glass-card p-4 sm:p-6 space-y-4">
+        <Textarea placeholder="Describe the image you want to generate... (e.g., 'A serene mountain landscape at sunset with a crystal clear lake')" value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[100px] sm:min-h-[120px] bg-input/50 border-border/50 resize-none text-base sm:text-lg" disabled={isGenerating} />
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end">
           <div className="flex-1">
             <label className="text-sm font-medium mb-2 block">Number of images</label>
             <Select value={imageCount} onValueChange={setImageCount} disabled={isGenerating}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full h-12 sm:h-14">
                 <SelectValue placeholder="Select count" />
               </SelectTrigger>
               <SelectContent>
@@ -381,25 +381,25 @@ const ImageGenerator = () => {
             </Select>
           </div>
           {!isGenerating ? (
-            <Button onClick={handleGenerate} disabled={!prompt.trim()} className="flex-[2] h-14 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all" style={{
+            <Button onClick={handleGenerate} disabled={!prompt.trim()} className="flex-1 sm:flex-[2] h-12 sm:h-14 text-base sm:text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all" style={{
               boxShadow: 'var(--shadow-glow)'
             }}>
-              <Sparkles className="mr-2 h-5 w-5" />
+              <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Generate {parseInt(imageCount) > 1 ? 'Images' : 'Image'}
             </Button>
           ) : (
             <Button onClick={() => {
               stopGeneratingRef.current = true;
               setShouldStopGenerating(true);
-            }} disabled={shouldStopGenerating} variant="destructive" className="flex-[2] h-14 text-lg font-semibold">
+            }} disabled={shouldStopGenerating} variant="destructive" className="flex-1 sm:flex-[2] h-12 sm:h-14 text-base sm:text-lg font-semibold">
               {shouldStopGenerating ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                   Stopping...
                 </>
               ) : (
                 <>
-                  Stop Generation ({currentProgress.current}/{currentProgress.total})
+                  Stop ({currentProgress.current}/{currentProgress.total})
                 </>
               )}
             </Button>
