@@ -67,6 +67,11 @@ const ImageGenerator = () => {
       } else {
         console.error('Failed to fetch images after retries');
         setIsLoadingImages(false);
+        toast({
+          title: "Failed to load images",
+          description: "Please refresh the page to try again",
+          variant: "destructive"
+        });
       }
     }
   };
@@ -100,13 +105,7 @@ const ImageGenerator = () => {
       setTotalImageCount(count || 0);
     } catch (error) {
       console.error('Error fetching images:', error);
-      if (savedImages.length === 0) {
-        toast({
-          title: "Failed to load images",
-          description: "Please refresh the page to try again",
-          variant: "destructive"
-        });
-      }
+      throw error; // Re-throw to let retry logic handle it
     } finally {
       setIsLoadingImages(false);
     }
