@@ -88,34 +88,25 @@ const ImageGenerator = () => {
       const limit = fetchAll ? SHOW_ALL_LIMIT : PREVIEW_LIMIT;
       const offset = fetchAll ? page * SHOW_ALL_LIMIT : 0;
       
-      const {
-        data,
-        error
-      } = await supabase.from('generated_images').select('*').eq('user_id', user.id).order('created_at', {
-        ascending: false
-      }).range(offset, offset + limit - 1);
-      
+      const { data, error, count } = await supabase
+        .from('generated_images')
+        .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
       if (error) throw error;
       setSavedImages(data || []);
-
-      // Fetch count separately (non-blocking)
-      supabase.from('generated_images').select('*', {
-        count: 'exact',
-        head: true
-      }).eq('user_id', user.id).then(({ count, error: countError }) => {
-        if (countError) {
-          console.error('Error fetching count:', countError);
-        } else {
-          setTotalImageCount(count || 0);
-        }
-      });
+      setTotalImageCount(count || 0);
     } catch (error) {
       console.error('Error fetching images:', error);
-      toast({
-        title: "Failed to load images",
-        description: "Please refresh the page to try again",
-        variant: "destructive"
-      });
+      if (savedImages.length === 0) {
+        toast({
+          title: "Failed to load images",
+          description: "Please refresh the page to try again",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoadingImages(false);
     }
