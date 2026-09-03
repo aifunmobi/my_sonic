@@ -152,16 +152,6 @@ export default function SonicGame() {
         )}
       </div>
 
-      <div className="w-full max-w-5xl mt-3 text-xs sm:text-sm text-blue-100/80 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
-        <span><b className="text-white">Move</b> Arrows, WASD or IJKL</span>
-        <span><b className="text-white">Jump</b> Space, Z, X, C or F</span>
-        <span><b className="text-white">Roll</b> Down while running</span>
-        <span><b className="text-white">Spin dash</b> Down + Jump, release Down</span>
-        <span><b className="text-white">Pause</b> P</span>
-        <span><b className="text-white">Restart zone</b> R</span>
-        <span><b className="text-white">Sound / Music</b> M / N</span>
-        <span><b className="text-white">Menu</b> Up/Down, Esc</span>
-      </div>
       <p className="w-full max-w-5xl mt-2 text-xs text-blue-100/60">
         Five zones. Collect rings, hit loops at full speed, bounce on springs, defeat the boss in Sky Fortress. Best scores, unlocked zones and settings are saved in your browser.
       </p>
