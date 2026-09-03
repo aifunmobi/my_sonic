@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,6 +246,11 @@ export default function Auth() {
                 ? "Don't have an account? Sign up"
                 : "Already have an account? Sign in"}
             </button>
+          </div>
+          <div className="text-center text-sm">
+            <Link to="/sonic" className="text-muted-foreground hover:text-primary hover:underline">
+              Or take a break and play Spin Rush
+            </Link>
           </div>
         </CardContent>
       </Card>

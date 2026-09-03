@@ -50,6 +50,18 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Spin Rush (Sonic-style platformer)
+
+The app includes a self-contained 2D speed platformer at `/sonic`, built from scratch with the Canvas 2D API and the Web Audio API (no external game assets or libraries).
+
+- Classic momentum physics: acceleration, friction, slopes, rolling, variable-height jumps, spin dash
+- Loop-de-loops that need speed to clear, springs, spikes, one-way and moving platforms, solid blocks
+- Rings (scatter on hit), item monitors (rings, shield, extra life), checkpoints, goal sign with time and ring bonus tally
+- Two enemy types, lives, pause, restart, synthesized sound effects and a looping chiptune
+- Keyboard (arrows/WASD, Space/Z/X, Down to roll, Down + Jump to spin dash) and on-screen touch controls
+
+Source lives in `src/game/` (engine) and `src/pages/SonicGame.tsx` (page).
+
 ## What technologies are used for this project?
 
 This project is built with:

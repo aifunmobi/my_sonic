@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import ImageGenerator from "@/components/ImageGenerator";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { Gamepad2, LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 const Index = () => {
   const navigate = useNavigate();
@@ -59,6 +59,12 @@ const Index = () => {
           <User className="h-4 w-4" />
           <span className="hidden sm:inline font-thin">{session.user.email}</span>
         </div>
+        <Button asChild variant="outline" size="sm" className="gap-2">
+          <Link to="/sonic">
+            <Gamepad2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Play Spin Rush</span>
+          </Link>
+        </Button>
         <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">Sign Out</span>
