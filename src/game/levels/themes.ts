@@ -16,6 +16,9 @@ export const EMERALD: Theme = {
   block: ["#6e6a80", "#8a8699"],
   water: ["#2a6fd8", "#0a2a6a"],
   waterDeadly: true,
+  edge: "grass",
+  tile: "checker",
+  extra: "waterfall",
 };
 
 export const SUNSET: Theme = {
@@ -34,6 +37,9 @@ export const SUNSET: Theme = {
   block: ["#8a7a6a", "#a89684"],
   water: ["#3a6fd0", "#10306a"],
   waterDeadly: true,
+  edge: "sand",
+  tile: "checker",
+  extra: "birds",
 };
 
 export const RUINS: Theme = {
@@ -52,6 +58,9 @@ export const RUINS: Theme = {
   block: ["#6a6a7a", "#8a8a9a"],
   water: ["#2a5a8a", "#0a2040"],
   waterDeadly: true,
+  edge: "moss",
+  tile: "brick",
+  extra: "fireflies",
 };
 
 export const MAGMA: Theme = {
@@ -70,6 +79,9 @@ export const MAGMA: Theme = {
   water: ["#ff7a20", "#c02a00"],
   waterDeadly: true,
   fog: "rgba(120,20,0,0.18)",
+  edge: "crust",
+  tile: "rock",
+  extra: "embers",
 };
 
 export const SKY: Theme = {
@@ -88,4 +100,7 @@ export const SKY: Theme = {
   block: ["#4a5068", "#606a84"],
   water: ["#1a2c5a", "#04081a"],
   waterDeadly: true,
+  edge: "metal",
+  tile: "metal",
+  extra: "airship",
 };

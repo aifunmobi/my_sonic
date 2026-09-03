@@ -35,6 +35,6 @@ export function buildLevel5() {
   b.bossArena(6900, 480);
   b.ringRow(7420, 5);
 
-  b.autoDecor(["antenna", "pipe", "rock", "antenna", "pipe"], 130, 9);
+  b.autoDecor(["antenna", "pipe", "rock", "antenna", "pipe"], 100, 9);
   return b.build({ index: 4, name: "SKY FORTRESS", act: 1, theme: SKY, height: 540, start: [60, 400], goal: 7560, music: 4 });
 }

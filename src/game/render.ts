@@ -6,6 +6,20 @@ import { LEVEL_NAMES } from "./levels";
 import { WATER_Y, type Game, type Particle, type Player } from "./game";
 import type { Decor, Loop, Theme } from "./types";
 
+function px(g: CanvasRenderingContext2D, x: number, y: number, c: string, w = 1, h = 1) {
+  g.fillStyle = c;
+  g.fillRect(x, y, w, h);
+}
+
+function seeded(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+/** Classic checkerboard with dithered shading inside each tile. */
 function checker(a: string, b: string, size: number, detail = true): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = size * 2;
@@ -17,17 +31,106 @@ function checker(a: string, b: string, size: number, detail = true): HTMLCanvasE
   g.fillRect(0, 0, size, size);
   g.fillRect(size, size, size, size);
   if (detail) {
-    // subtle inner bevel on each tile for a chunkier 16-bit look
-    g.fillStyle = "rgba(255,255,255,0.10)";
-    g.fillRect(0, 0, size, 1);
-    g.fillRect(0, 0, 1, size);
-    g.fillRect(size, size, size, 1);
-    g.fillRect(size, size, 1, size);
-    g.fillStyle = "rgba(0,0,0,0.12)";
-    g.fillRect(size - 1, 0, 1, size);
-    g.fillRect(0, size - 1, size, 1);
-    g.fillRect(size * 2 - 1, size, 1, size);
-    g.fillRect(size, size * 2 - 1, size, 1);
+    for (const [ox, oy, light] of [[0, 0, true], [size, size, true], [size, 0, false], [0, size, false]] as [number, number, boolean][]) {
+      // dithered diagonal shading: darker toward bottom-right
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const d = (x + y) / (size * 2);
+          if (d > 0.55 && (x + y) % 2 === 0) px(g, ox + x, oy + y, "rgba(0,0,0,0.14)");
+          if (d < 0.3 && (x + y) % 2 === 0 && light) px(g, ox + x, oy + y, "rgba(255,255,255,0.12)");
+        }
+      }
+      px(g, ox, oy, "rgba(255,255,255,0.18)", size, 1);
+      px(g, ox, oy, "rgba(255,255,255,0.18)", 1, size);
+      px(g, ox, oy + size - 1, "rgba(0,0,0,0.25)", size, 1);
+      px(g, ox + size - 1, oy, "rgba(0,0,0,0.25)", 1, size);
+    }
+  }
+  return c;
+}
+
+/** Mossy stone bricks for the ruins. */
+function bricks(a: string, b: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 48;
+  c.height = 32;
+  const g = c.getContext("2d")!;
+  const rnd = seeded(5);
+  g.fillStyle = "#2c3434";
+  g.fillRect(0, 0, 48, 32);
+  for (let row = 0; row < 2; row++) {
+    const off = row % 2 ? 12 : 0;
+    for (let col = -1; col < 3; col++) {
+      const x = col * 24 + off;
+      const y = row * 16;
+      g.fillStyle = rnd() > 0.5 ? a : b;
+      g.fillRect(x + 1, y + 1, 22, 14);
+      px(g, x + 1, y + 1, "rgba(255,255,255,0.22)", 22, 1);
+      px(g, x + 1, y + 1, "rgba(255,255,255,0.22)", 1, 14);
+      px(g, x + 1, y + 14, "rgba(0,0,0,0.3)", 22, 1);
+      px(g, x + 22, y + 1, "rgba(0,0,0,0.3)", 1, 14);
+      for (let k = 0; k < 4; k++) px(g, x + 2 + Math.floor(rnd() * 20), y + 2 + Math.floor(rnd() * 12), "rgba(0,0,0,0.15)", 2, 1);
+      if (rnd() > 0.6) px(g, x + 2 + Math.floor(rnd() * 16), y + 2 + Math.floor(rnd() * 8), "#3a9a5a", 3, 2);
+    }
+  }
+  return c;
+}
+
+/** Cracked volcanic rock with glowing seams. */
+function rock(a: string, b: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 32;
+  c.height = 32;
+  const g = c.getContext("2d")!;
+  const rnd = seeded(9);
+  g.fillStyle = a;
+  g.fillRect(0, 0, 32, 32);
+  for (let i = 0; i < 14; i++) {
+    const x = Math.floor(rnd() * 32);
+    const y = Math.floor(rnd() * 32);
+    const w = 3 + Math.floor(rnd() * 8);
+    const h = 2 + Math.floor(rnd() * 5);
+    g.fillStyle = b;
+    g.fillRect(x, y, w, h);
+    px(g, x, y, "rgba(255,255,255,0.12)", w, 1);
+    px(g, x, y + h - 1, "rgba(0,0,0,0.3)", w, 1);
+  }
+  // glowing cracks
+  g.fillStyle = "#ff7a20";
+  px(g, 4, 6, "#ff7a20", 1, 6);
+  px(g, 5, 11, "#ff7a20", 5, 1);
+  px(g, 10, 12, "#ffb040", 1, 4);
+  px(g, 20, 20, "#ff7a20", 6, 1);
+  px(g, 26, 16, "#ff7a20", 1, 5);
+  px(g, 18, 26, "#ffb040", 1, 4);
+  px(g, 14, 3, "#ff7a20", 4, 1);
+  return c;
+}
+
+/** Riveted metal panels for the fortress. */
+function metal(a: string, b: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 32;
+  c.height = 32;
+  const g = c.getContext("2d")!;
+  g.fillStyle = a;
+  g.fillRect(0, 0, 32, 32);
+  for (const [x, y, w, h, col] of [[0, 0, 16, 16, b], [16, 0, 16, 16, a], [0, 16, 16, 16, a], [16, 16, 16, 16, b]] as [number, number, number, number, string][]) {
+    g.fillStyle = col;
+    g.fillRect(x, y, w, h);
+    px(g, x, y, "rgba(255,255,255,0.25)", w, 1);
+    px(g, x, y, "rgba(255,255,255,0.25)", 1, h);
+    px(g, x, y + h - 1, "rgba(0,0,0,0.35)", w, 1);
+    px(g, x + w - 1, y, "rgba(0,0,0,0.35)", 1, h);
+    for (const [rx, ry] of [[3, 3], [w - 5, 3], [3, h - 5], [w - 5, h - 5]]) {
+      px(g, x + rx, y + ry, "#c8d0e0", 2, 2);
+      px(g, x + rx + 1, y + ry + 1, "#3a4058", 1, 1);
+    }
+  }
+  // hazard stripe on one panel
+  for (let i = 0; i < 16; i += 4) {
+    px(g, 18 + i, 6, "#e0b030", 2, 3);
+    px(g, 20 + i, 6, "#222", 2, 3);
   }
   return c;
 }
@@ -56,8 +159,10 @@ export class Renderer {
     let p = this.patterns.get(theme.id);
     if (!p) {
       const g = this.b;
+      const tile =
+        theme.tile === "brick" ? bricks(theme.ground[0], theme.ground[1]) : theme.tile === "rock" ? rock(theme.ground[0], theme.ground[1]) : theme.tile === "metal" ? metal(theme.ground[0], theme.ground[1]) : checker(theme.ground[0], theme.ground[1], 16);
       p = {
-        ground: g.createPattern(checker(theme.ground[0], theme.ground[1], 16), "repeat")!,
+        ground: g.createPattern(tile, "repeat")!,
         loop: g.createPattern(checker(theme.loop[0], theme.loop[1], 12), "repeat")!,
         block: g.createPattern(checker(theme.block[0], theme.block[1], 8, false), "repeat")!,
       };
@@ -160,12 +265,7 @@ export class Renderer {
     const W = C.VIEW_W;
     const H = C.VIEW_H;
     const py = -cam.y * 0.1;
-    const sky = g.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, theme.sky[0]);
-    sky.addColorStop(0.55, theme.sky[1]);
-    sky.addColorStop(1, theme.sky[2]);
-    g.fillStyle = sky;
-    g.fillRect(0, 0, W, H);
+    this.bandedSky(g, theme, W, H);
 
     if (theme.stars) {
       for (let i = 0; i < this.starSeed.length; i += 3) {
@@ -222,6 +322,137 @@ export class Renderer {
     }
     if (theme.id !== "sky") this.bgNearHills(g, cam.x, py, theme);
     else this.bgSmallClouds(g, cam.x, py, game.frame);
+    switch (theme.extra) {
+      case "waterfall":
+        this.bgWaterfall(g, cam.x, py, game.frame);
+        break;
+      case "birds":
+        this.bgBirds(g, cam.x, py, game.frame);
+        break;
+      case "fireflies":
+        this.bgFireflies(g, cam.x, py, game.frame);
+        break;
+      case "embers":
+        this.bgEmbers(g, game.frame);
+        break;
+      case "airship":
+        this.bgAirship(g, cam.x, py, game.frame);
+        break;
+    }
+  }
+
+  private skyCache = new Map<string, HTMLCanvasElement>();
+
+  /** Mega Drive style sky: horizontal colour bands with a 2px dither between them. */
+  private bandedSky(g: CanvasRenderingContext2D, theme: Theme, W: number, H: number) {
+    let c = this.skyCache.get(theme.id);
+    if (!c) {
+      c = document.createElement("canvas");
+      c.width = W;
+      c.height = H;
+      const k = c.getContext("2d")!;
+      const stops = theme.sky.map((hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+      const bands = 18;
+      const colorAt = (t: number) => {
+        const seg = t < 0.55 ? 0 : 1;
+        const lt = seg === 0 ? t / 0.55 : (t - 0.55) / 0.45;
+        const a = stops[seg];
+        const b = stops[seg + 1];
+        return `rgb(${Math.round(a[0] + (b[0] - a[0]) * lt)},${Math.round(a[1] + (b[1] - a[1]) * lt)},${Math.round(a[2] + (b[2] - a[2]) * lt)})`;
+      };
+      const bh = H / bands;
+      for (let i = 0; i < bands; i++) {
+        k.fillStyle = colorAt(i / (bands - 1));
+        k.fillRect(0, Math.floor(i * bh), W, Math.ceil(bh) + 1);
+        if (i > 0) {
+          // dither the seam with the previous band colour
+          k.fillStyle = colorAt((i - 1) / (bands - 1));
+          const y = Math.floor(i * bh);
+          for (let x = 0; x < W; x += 2) k.fillRect(x + (y % 2), y, 1, 1);
+          for (let x = 0; x < W; x += 4) k.fillRect(x + ((y + 1) % 2), y + 1, 1, 1);
+        }
+      }
+      this.skyCache.set(theme.id, c);
+    }
+    g.drawImage(c, 0, 0);
+  }
+
+  private bgWaterfall(g: CanvasRenderingContext2D, camX: number, py: number, frame: number) {
+    const W = C.VIEW_W;
+    const off = (camX * 0.25) % 900;
+    for (let k = -1; k <= 1; k++) {
+      const x = Math.round(620 - off + k * 900);
+      if (x < -40 || x > W + 40) continue;
+      const top = Math.round(120 + py * 0.6);
+      const h = 100;
+      g.fillStyle = "#3f8fe8";
+      g.fillRect(x, top, 18, h);
+      g.fillStyle = "#8fd0ff";
+      for (let i = 0; i < 6; i++) {
+        const yy = top + ((frame * 3 + i * 17) % h);
+        g.fillRect(x + 2 + (i * 5) % 14, yy, 2, 6);
+      }
+      g.fillStyle = "rgba(255,255,255,0.8)";
+      for (let i = 0; i < 6; i++) g.fillRect(x - 4 + i * 5, top + h - 3 + ((frame + i * 4) % 6 < 3 ? 0 : 1), 3, 2);
+      g.fillStyle = "#2f6fc8";
+      g.fillRect(x - 3, top - 3, 24, 3);
+    }
+  }
+
+  private bgBirds(g: CanvasRenderingContext2D, camX: number, py: number, frame: number) {
+    g.fillStyle = "#3a1a3a";
+    for (let i = 0; i < 5; i++) {
+      const x = ((i * 137 + frame * 0.4 - camX * 0.08) % 520 + 520) % 520 - 20;
+      const y = 60 + i * 14 + py * 0.3 + Math.sin(frame * 0.05 + i) * 4;
+      const flap = (frame >> 3) % 2 === 0 ? 1 : -1;
+      g.fillRect(Math.round(x), Math.round(y), 3, 1);
+      g.fillRect(Math.round(x) - 2, Math.round(y) - flap, 2, 1);
+      g.fillRect(Math.round(x) + 3, Math.round(y) - flap, 2, 1);
+    }
+  }
+
+  private bgFireflies(g: CanvasRenderingContext2D, camX: number, py: number, frame: number) {
+    for (let i = 0; i < 14; i++) {
+      const x = ((i * 97 + Math.sin(frame * 0.01 + i) * 30 - camX * 0.4) % 520 + 520) % 520 - 20;
+      const y = 150 + (i * 23) % 80 + py * 0.8 + Math.sin(frame * 0.03 + i * 2) * 6;
+      const on = (frame + i * 17) % 90 < 45;
+      if (!on) continue;
+      g.fillStyle = "rgba(220,255,120,0.9)";
+      g.fillRect(Math.round(x), Math.round(y), 2, 2);
+      g.fillStyle = "rgba(220,255,120,0.3)";
+      g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 4, 4);
+    }
+  }
+
+  private bgEmbers(g: CanvasRenderingContext2D, frame: number) {
+    for (let i = 0; i < 18; i++) {
+      const life = (frame + i * 29) % 240;
+      const x = (i * 53 + Math.sin(life * 0.05 + i) * 10) % C.VIEW_W;
+      const y = C.VIEW_H - life * 1.1;
+      if (y < 0) continue;
+      g.fillStyle = life % 8 < 4 ? "#ff9040" : "#ffd060";
+      g.fillRect(Math.round(x), Math.round(y), 2, 2);
+    }
+  }
+
+  private bgAirship(g: CanvasRenderingContext2D, camX: number, py: number, frame: number) {
+    const x = Math.round(((frame * 0.25 - camX * 0.1) % 700 + 700) % 700 - 100);
+    const y = Math.round(70 + py * 0.3 + Math.sin(frame * 0.02) * 3);
+    g.fillStyle = "#2a3050";
+    g.beginPath();
+    g.ellipse(x, y, 30, 9, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#3e4870";
+    g.beginPath();
+    g.ellipse(x, y - 2, 28, 5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#1a2040";
+    g.fillRect(x - 8, y + 8, 16, 5);
+    g.fillStyle = (frame >> 3) % 2 === 0 ? "#ff5050" : "#600";
+    g.fillRect(x + 26, y - 1, 2, 2);
+    g.fillStyle = "#ffd060";
+    g.fillRect(x - 5, y + 9, 2, 2);
+    g.fillRect(x + 2, y + 9, 2, 2);
   }
 
   private bgMountains(g: CanvasRenderingContext2D, camX: number, py: number, color: string, frame: number) {
@@ -525,38 +756,94 @@ export class Renderer {
       g.fillStyle = pats.ground;
       g.fill();
 
-      // darker band under the grass
-      g.strokeStyle = theme.groundEdge;
-      g.lineWidth = 3;
-      g.beginPath();
-      pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y + 10) : g.lineTo(p.x, p.y + 10)));
-      g.stroke();
-
-      // grass
-      g.lineCap = "round";
-      g.strokeStyle = theme.grass[0];
-      g.lineWidth = 8;
-      g.beginPath();
-      pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y + 2) : g.lineTo(p.x, p.y + 2)));
-      g.stroke();
-      g.strokeStyle = theme.grass[1];
-      g.lineWidth = 3;
-      g.beginPath();
-      pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y - 1) : g.lineTo(p.x, p.y - 1)));
-      g.stroke();
-      g.lineCap = "butt";
-      // grass tufts
-      g.fillStyle = theme.grass[1];
-      for (let i = 0; i < pts.length; i += 4) {
-        const p = pts[i];
-        if ((p.x / 4) % 3 === 0) g.fillRect(p.x, p.y - 4, 1, 3);
-      }
+      this.drawEdge(g, pts, theme);
       // cliff walls at the run ends (edges of pits)
       const wallShade = "rgba(0,0,0,0.28)";
       g.fillStyle = wallShade;
       if (groundAtSegs(segs, first.x - step) === null) g.fillRect(first.x, first.y, 4, bottom - first.y);
       if (groundAtSegs(segs, last.x + step) === null) g.fillRect(last.x - 4, last.y, 4, bottom - last.y);
     }
+  }
+
+  private strokePath(g: CanvasRenderingContext2D, pts: { x: number; y: number }[], dy: number, color: string, width: number) {
+    g.strokeStyle = color;
+    g.lineWidth = width;
+    g.beginPath();
+    pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y + dy) : g.lineTo(p.x, p.y + dy)));
+    g.stroke();
+  }
+
+  /** Surface strip along the terrain, styled per theme. */
+  private drawEdge(g: CanvasRenderingContext2D, pts: { x: number; y: number }[], theme: Theme) {
+    g.lineCap = "round";
+    switch (theme.edge) {
+      case "grass":
+      case "sand": {
+        this.strokePath(g, pts, 11, theme.groundEdge, 4);
+        this.strokePath(g, pts, 3, theme.grass[0], 8);
+        this.strokePath(g, pts, -1, theme.grass[1], 3);
+        this.strokePath(g, pts, -2, "rgba(255,255,255,0.35)", 1);
+        // blades / pebbles
+        g.fillStyle = theme.edge === "grass" ? theme.grass[1] : "rgba(255,255,255,0.5)";
+        for (let i = 0; i < pts.length; i += 2) {
+          const p = pts[i];
+          const k = Math.floor(p.x / 4) % 7;
+          if (k === 0) g.fillRect(Math.round(p.x), Math.round(p.y) - 5, 1, 4);
+          else if (k === 3) g.fillRect(Math.round(p.x), Math.round(p.y) - 4, 1, 3);
+        }
+        g.fillStyle = "rgba(0,0,0,0.25)";
+        for (let i = 0; i < pts.length; i += 3) {
+          const p = pts[i];
+          if (Math.floor(p.x / 4) % 5 === 0) g.fillRect(Math.round(p.x), Math.round(p.y) + 5, 2, 1);
+        }
+        break;
+      }
+      case "moss": {
+        this.strokePath(g, pts, 8, theme.groundEdge, 4);
+        this.strokePath(g, pts, 2, "#5a6a6a", 6);
+        this.strokePath(g, pts, -1, theme.grass[0], 4);
+        this.strokePath(g, pts, -2, theme.grass[1], 2);
+        g.fillStyle = theme.grass[0];
+        for (let i = 0; i < pts.length; i += 2) {
+          const p = pts[i];
+          const k = Math.floor(p.x / 4) % 9;
+          if (k === 0) g.fillRect(Math.round(p.x), Math.round(p.y) + 2, 2, 6);
+          if (k === 5) g.fillRect(Math.round(p.x), Math.round(p.y) + 2, 1, 4);
+        }
+        break;
+      }
+      case "crust": {
+        this.strokePath(g, pts, 8, "#1a0808", 4);
+        this.strokePath(g, pts, 2, theme.grass[0], 7);
+        this.strokePath(g, pts, -1, theme.grass[1], 3);
+        g.fillStyle = "#ffb040";
+        for (let i = 0; i < pts.length; i += 2) {
+          const p = pts[i];
+          const k = Math.floor(p.x / 4) % 11;
+          if (k === 0 || k === 6) g.fillRect(Math.round(p.x), Math.round(p.y) + 1, 3, 1);
+        }
+        break;
+      }
+      case "metal": {
+        this.strokePath(g, pts, 8, "#1a2030", 3);
+        this.strokePath(g, pts, 2, "#8a94b0", 7);
+        this.strokePath(g, pts, -1, "#c8d0e0", 2);
+        // hazard stripes
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          const k = Math.floor(p.x / 4) % 4;
+          g.fillStyle = k < 2 ? theme.grass[0] : "#222";
+          g.fillRect(Math.round(p.x), Math.round(p.y) + 3, 4, 3);
+        }
+        g.fillStyle = "#e8eef8";
+        for (let i = 0; i < pts.length; i += 4) {
+          const p = pts[i];
+          if (Math.floor(p.x / 4) % 8 === 0) g.fillRect(Math.round(p.x), Math.round(p.y) - 1, 2, 1);
+        }
+        break;
+      }
+    }
+    g.lineCap = "butt";
   }
 
   private drawPlatforms(g: CanvasRenderingContext2D, game: Game, theme: Theme, pats: ThemePatterns, x0: number, x1: number) {
@@ -880,7 +1167,19 @@ export class Renderer {
     g.beginPath();
     g.arc(0, 0, 6, -2.6, -0.6);
     g.stroke();
+    g.strokeStyle = "#a06000";
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(0, 0, 7.2, 0.4, 2.2);
+    g.stroke();
     g.restore();
+    if ((frame + Math.round(x)) % 48 < 5) {
+      g.fillStyle = "#fff";
+      const rx = Math.round(x) + 4;
+      const ry = Math.round(y) - 5;
+      g.fillRect(rx - 1, ry - 3, 2, 7);
+      g.fillRect(rx - 3, ry - 1, 7, 2);
+    }
   }
 
   private drawRingSparkle(g: CanvasRenderingContext2D, x: number, y: number, t: number) {
@@ -1362,9 +1661,29 @@ export class Renderer {
   // ------------------------------------------------------------------
   // Player
   // ------------------------------------------------------------------
+  private trail: { x: number; y: number; facing: 1 | -1; angle: number; rolling: boolean; phase: number }[] = [];
+
   private drawPlayer(g: CanvasRenderingContext2D, game: Game) {
     const pl = game.player;
     if (pl.invuln > 0 && game.phase === "playing" && Math.floor(pl.invuln / 3) % 2 === 0) return;
+    // speed after-images
+    this.trail.push({ x: pl.x, y: pl.y, facing: pl.facing, angle: pl.drawAngle, rolling: pl.rolling, phase: pl.runPhase });
+    if (this.trail.length > 8) this.trail.shift();
+    const fast = Math.abs(pl.gsp) >= 5.5 || (!pl.onGround && Math.abs(pl.xsp) >= 5.5) || pl.invincible > 0;
+    if (fast && game.phase === "playing") {
+      for (const [idx, alpha] of [[2, 0.18], [5, 0.32]] as [number, number][]) {
+        const t = this.trail[this.trail.length - 1 - idx];
+        if (!t) continue;
+        g.save();
+        g.globalAlpha = alpha;
+        g.translate(Math.round(t.x), Math.round(t.y));
+        g.rotate(t.angle);
+        g.scale(t.facing, 1);
+        if (t.rolling) this.drawBall(g, { ...pl, runPhase: t.phase });
+        else this.drawStanding(g, { ...pl, runPhase: t.phase, skidding: false }, game, false);
+        g.restore();
+      }
+    }
     g.save();
     g.translate(Math.round(pl.x), Math.round(pl.y));
     if (pl.shield) {
@@ -1515,7 +1834,18 @@ export class Renderer {
       else if (spring) legs = [[-3, 15, -0.2], [3, 16, 0.2]];
       else if (!pl.onGround) legs = [[-5, 12, 0.5], [5, 15, -0.2]];
       else if (crouch) legs = [[-6, 16, 0], [6, 16, 0]];
-      else if (running) legs = [[-5 + swing * 8, 15 - Math.abs(swing) * 3, swing * 0.5], [5 - swing * 8, 15 - Math.abs(swing) * 3, -swing * 0.5]];
+      else if (running) {
+        // six-frame run cycle: front foot, back foot
+        const cycle: [number, number, number][][] = [
+          [[9, 15, 0.2], [-8, 12, -0.6]],
+          [[6, 16, 0], [-4, 9, -0.9]],
+          [[1, 16, -0.1], [1, 8, -0.8]],
+          [[-5, 15, -0.3], [7, 11, 0.4]],
+          [[-8, 12, -0.6], [9, 15, 0.2]],
+          [[-3, 9, -0.9], [6, 16, 0]],
+        ];
+        legs = cycle[Math.floor(pl.runPhase * 1.2) % cycle.length];
+      }
       else legs = [[-4, 16, 0], [4, 16, 0]];
       for (const [fx, fy, tilt] of legs) {
         drawLeg(fx * 0.4, fx, fy);

@@ -28,6 +28,6 @@ export function buildLevel3() {
   b.chopper(5975, 480).ringsAt([[5945, 372], [5975, 360], [6005, 372]]);
   b.ringRow(6080, 5).enemy("buzzer", 6170, 60, { height: 60 }).ringArc(6330, 5, 120, 40, 40).ringRow(6480, 6);
 
-  b.autoDecor(["column", "ruinwall", "torch", "bush", "flower", "column"], 120, 11);
+  b.autoDecor(["column", "ruinwall", "torch", "bush", "flower", "column"], 90, 11);
   return b.build({ index: 2, name: "MOSSY RUINS", act: 1, theme: RUINS, height: 540, start: [60, 400], goal: 6800, music: 2 });
 }

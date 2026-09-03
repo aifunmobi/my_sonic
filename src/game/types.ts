@@ -104,6 +104,12 @@ export interface Theme {
   water: [string, string];
   waterDeadly: boolean;
   fog?: string;
+  /** Surface style along the terrain top */
+  edge: "grass" | "moss" | "crust" | "metal" | "sand";
+  /** Ground tile style */
+  tile: "checker" | "brick" | "rock" | "metal";
+  /** Extra animated background layer */
+  extra?: "waterfall" | "birds" | "fireflies" | "embers" | "airship";
 }
 
 export interface LevelData {

@@ -31,6 +31,6 @@ export function buildLevel4() {
   b.spikesAt(6850, 32).ringRow(6840, 3, 56).monitor(6790, "life");
   b.ringArc(7030, 5, 120, 40, 40).ringRow(7200, 6);
 
-  b.autoDecor(["crystal", "rock", "lavaburst", "torch", "crystal", "rock"], 120, 5);
+  b.autoDecor(["crystal", "rock", "lavaburst", "torch", "crystal", "rock"], 95, 5);
   return b.build({ index: 3, name: "MAGMA CAVERN", act: 1, theme: MAGMA, height: 540, start: [60, 400], goal: 7500, music: 3 });
 }

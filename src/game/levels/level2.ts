@@ -28,6 +28,6 @@ export function buildLevel2() {
   b.ringRow(5640, 5).enemy("buzzer", 5740, 60, { height: 64 }).ringArc(5890, 5, 120, 40, 40);
   b.ringRow(6080, 6);
 
-  b.autoDecor(["palm", "umbrella", "rock", "flower", "palm", "bush"], 140, 3);
+  b.autoDecor(["palm", "umbrella", "rock", "flower", "palm", "bush"], 100, 3);
   return b.build({ index: 1, name: "SUNSET BAY", act: 1, theme: SUNSET, height: 540, start: [60, 400], goal: 6300, music: 1 });
 }

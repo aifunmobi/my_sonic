@@ -22,6 +22,6 @@ export function buildLevel1() {
   b.checkpoint(4560).monitor(4620, "ring").enemy("crawler", 4720, 80).ringRow(4760, 5);
   b.ringArc(5006, 5, 120, 40, 40);
 
-  b.autoDecor(["palm", "flower", "bush", "totem", "flower", "bush"], 130, 7);
+  b.autoDecor(["palm", "flower", "bush", "totem", "flower", "bush"], 95, 7);
   return b.build({ index: 0, name: "EMERALD COAST", act: 1, theme: EMERALD, height: 540, start: [60, 400], goal: 5300, music: 0 });
 }
