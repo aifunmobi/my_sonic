@@ -2,76 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
-@layer base {
-  :root {
-    --background: 220 25% 8%;
-    --foreground: 210 40% 98%;
-
-    --card: 220 25% 10%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 220 25% 10%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 280 80% 65%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 320 75% 60%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 220 20% 20%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 280 80% 65%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 220 20% 20%;
-    --input: 220 20% 18%;
-    --ring: 280 80% 65%;
-
-    --radius: 1rem;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(280 80% 65%) 0%, hsl(320 75% 60%) 100%);
-    --gradient-secondary: linear-gradient(180deg, hsl(220 25% 10%) 0%, hsl(220 25% 8%) 100%);
-    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(280 80% 65% / 0.15) 0%, transparent 70%);
-
-    /* Effects */
-    --shadow-glow: 0 0 40px hsl(280 80% 65% / 0.3);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    background-image: var(--gradient-glow);
-    background-attachment: fixed;
-  }
-}
-
-@layer utilities {
-  .glass-card {
-    background: hsl(var(--card) / 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--border) / 0.3);
-  }
-
-  .gradient-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: #07102a;
+  color: #fff;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

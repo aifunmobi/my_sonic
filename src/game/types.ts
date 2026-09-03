@@ -4,9 +4,9 @@ export interface Segment {
   x: number;
   w: number;
   kind: SegmentKind;
-  y: number; // ground y at start (ignored for gap)
-  y2?: number; // slope: ground y at end
-  h?: number; // hill: bump height (positive = upward)
+  y: number;
+  y2?: number;
+  h?: number;
 }
 
 export interface Platform {
@@ -14,8 +14,10 @@ export interface Platform {
   y: number;
   w: number;
   h: number;
-  solid: boolean; // solid blocks stop walls/head; non-solid are one-way from above
+  solid: boolean;
   move?: { dx: number; dy: number; period: number; phase?: number };
+  /** Falls away shortly after being stood on (later levels). */
+  crumble?: boolean;
 }
 
 export interface RingSpawn {
@@ -23,57 +25,92 @@ export interface RingSpawn {
   y: number;
 }
 
-export type EnemyKind = "crawler" | "buzzer";
+export type EnemyKind = "crawler" | "buzzer" | "crab" | "chopper" | "spikeball";
 
 export interface EnemySpawn {
   kind: EnemyKind;
   x: number;
   y: number;
   range: number;
+  /** buzzer/crab: fires projectiles when true */
+  shoots?: boolean;
 }
 
 export interface Spring {
   x: number;
-  y: number; // y of the spring top surface
+  y: number;
+  strong: boolean; // red = strong, yellow = weak
 }
 
 export interface SpikeStrip {
   x: number;
-  y: number; // y of the spike tips
+  y: number;
   w: number;
 }
 
-export type MonitorKind = "ring" | "shield" | "life";
+export type MonitorKind = "ring" | "shield" | "life" | "speed" | "invincible";
 
 export interface Monitor {
   x: number;
-  y: number; // bottom of the monitor
+  y: number;
   kind: MonitorKind;
 }
 
 export interface Checkpoint {
   x: number;
-  y: number; // ground y at the post
+  y: number;
 }
 
 export interface Loop {
   cx: number;
   cy: number;
-  r: number; // radius of the running surface
+  r: number;
 }
 
-export type DecorKind = "palm" | "flower" | "bush" | "totem";
+export type DecorKind = "palm" | "flower" | "bush" | "totem" | "column" | "ruinwall" | "crystal" | "lavaburst" | "antenna" | "pipe" | "umbrella" | "rock" | "torch";
 
 export interface Decor {
   kind: DecorKind;
   x: number;
   y: number;
   scale?: number;
+  /** Draw behind terrain (default) or in front */
+  front?: boolean;
+}
+
+export interface BossArena {
+  /** Left edge of the locked camera arena */
+  x: number;
+  w: number;
+  /** Ground y in the arena */
+  y: number;
+}
+
+export interface Theme {
+  id: string;
+  sky: [string, string, string];
+  sun?: { color: string; x: number; y: number; r: number };
+  stars?: boolean;
+  farLayer: "mountains" | "ruins" | "cave" | "clouds" | "dunes";
+  farColor: string;
+  midLayer: "ocean" | "lava" | "hills" | "cityline" | "sea";
+  midColor: string;
+  midColor2: string;
+  ground: [string, string];
+  groundEdge: string;
+  grass: [string, string];
+  loop: [string, string];
+  block: [string, string];
+  water: [string, string];
+  waterDeadly: boolean;
+  fog?: string;
 }
 
 export interface LevelData {
+  index: number;
   name: string;
   act: number;
+  theme: Theme;
   width: number;
   height: number;
   start: { x: number; y: number };
@@ -88,4 +125,6 @@ export interface LevelData {
   loops: Loop[];
   decor: Decor[];
   goal: { x: number; y: number };
+  boss?: BossArena;
+  music: number;
 }

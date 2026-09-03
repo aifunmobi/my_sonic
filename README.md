@@ -1,85 +1,57 @@
-# Welcome to your Lovable project
+# my_sonic - Spin Rush
 
-## Project info
+A five-zone, Sonic-style 2D speed platformer that runs in the browser. Everything (engine, levels, pixel-style art, sound effects and music) is generated in code; there are no external game assets or game libraries.
 
-**URL**: https://lovable.dev/projects/7b953363-1390-44a9-a1a7-6da3c6c02169
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/7b953363-1390-44a9-a1a7-6da3c6c02169) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Play
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+npm run dev      # http://localhost:8080
+npm run build    # production build in dist/
 ```
 
-**Edit a file directly in GitHub**
+## Controls
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Action | Keys |
+| --- | --- |
+| Move | Arrow keys, WASD or IJKL |
+| Jump | Space, Z, X, C, F or Shift |
+| Roll | Down while running |
+| Spin dash | Hold Down, tap Jump to charge, release Down |
+| Pause / resume | P |
+| Quit to title | Esc (while paused) |
+| Restart zone | R |
+| Sound / music | M / N |
+| Menu | Up / Down to pick a zone, Jump to start |
 
-**Use GitHub Codespaces**
+Touch devices get on-screen buttons.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Zones
 
-## Spin Rush (Sonic-style platformer)
+1. **Emerald Coast** - gentle hills, one loop, a few enemies (easy)
+2. **Sunset Bay** - water gaps with leaping fish, three loops, springs (easy)
+3. **Mossy Ruins** - stone steps, moving platforms, crabs (easy)
+4. **Magma Cavern** - lava pits, shooting enemies, spike balls, crumbling platforms (hard)
+5. **Sky Fortress** - islands over a void, shooters everywhere, and a boss (hardest)
 
-The app includes a self-contained 2D speed platformer at `/sonic`, built from scratch with the Canvas 2D API and the Web Audio API (no external game assets or libraries).
+Zones unlock in order and unlocked zones can be replayed from the title screen.
 
-- Classic momentum physics: acceleration, friction, slopes, rolling, variable-height jumps, spin dash
-- Loop-de-loops that need speed to clear, springs, spikes, one-way and moving platforms, solid blocks
-- Rings (scatter on hit), item monitors (rings, shield, extra life), checkpoints, goal sign with time and ring bonus tally
-- Two enemy types, lives, pause, restart, synthesized sound effects and a looping chiptune
-- Keyboard (arrows/WASD, Space/Z/X, Down to roll, Down + Jump to spin dash) and on-screen touch controls
+## Scoring
 
-Source lives in `src/game/` (engine) and `src/pages/SonicGame.tsx` (page).
+- Enemy: 100, then 200, 500 and 1000 for each further enemy defeated without touching the ground
+- Item monitor: 10
+- Boss: 100 per hit, 1000 for the finish
+- Zone clear: time bonus (50000 under 30 s down to 0 over 5 min), 100 per ring held, 10000 perfect bonus for collecting every ring in the zone
+- Extra life every 100 rings and every 50000 points
 
-## What technologies are used for this project?
+Best score and time per zone, best run, unlocked zones and sound settings are saved in the browser's local storage.
 
-This project is built with:
+## Code
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/7b953363-1390-44a9-a1a7-6da3c6c02169) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `src/game/game.ts` - simulation (classic momentum physics, loops, enemies, boss, scoring)
+- `src/game/render.ts` - renders at native 480x270 and upscales with nearest-neighbour sampling
+- `src/game/levels/` - level builder DSL, themes, and the five zones
+- `src/game/audio.ts` - synthesized SFX and six chiptune tracks
+- `src/game/font.ts` - 5x7 bitmap HUD font
+- `src/game/save.ts` - local storage persistence
+- `src/pages/SonicGame.tsx` - page, input wiring, touch controls
