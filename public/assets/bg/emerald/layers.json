@@ -1,0 +1,17 @@
+{
+  "sky": {
+    "rate": 0.0
+  },
+  "far": {
+    "rate": 0.1
+  },
+  "mid": {
+    "rate": 0.25
+  },
+  "near": {
+    "rate": 0.5
+  },
+  "width": 960,
+  "height": 540,
+  "scale": 2
+}
