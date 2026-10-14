@@ -109,20 +109,20 @@ export function blit(g: CanvasRenderingContext2D, s: Sprite, x: number, y: numbe
 // Palette
 // ---------------------------------------------------------------------------
 export const PAL = {
-  K: "#10204a", // dark outline blue
-  B: "#2a5ce8",
-  Bd: "#1a3cb0",
-  Bl: "#6a98ff",
-  S: "#f6cc98",
-  Sd: "#d8a060",
+  K: "#0a2a34", // dark outline teal
+  B: "#1aa8c8", // body teal
+  Bd: "#0f7a98",
+  Bl: "#6ae0f0",
+  S: "#f6d6a0",
+  Sd: "#d8a860",
   W: "#ffffff",
   Wd: "#c4c8d8",
-  R: "#e83838",
-  Rd: "#a01818",
-  Rl: "#ff8a8a",
-  Y: "#ffd040",
+  R: "#ff7a1a", // shoes orange
+  Rd: "#b84a08",
+  Rl: "#ffb070",
+  Y: "#ffe040",
   E: "#101010",
-  G: "#108a38",
+  G: "#d88a10", // amber iris
   Gl: "#40c060",
 };
 
@@ -219,13 +219,13 @@ function heroDraw(g: CanvasRenderingContext2D, d: PoseDef) {
     ell(0, -2.5, 4, 1.4, Rl);
     g.fillStyle = Rd;
     g.fillRect(-5, 0, 14, 1.5);
-    // strap + buckle
-    g.fillStyle = W;
-    g.fillRect(-1, -4.5, 7, 2.2);
-    g.fillStyle = Wd;
-    g.fillRect(-1, -2.6, 7, 0.8);
+    // yellow stripe and buckle
     g.fillStyle = Y;
-    g.fillRect(4, -4.5, 2.5, 2.2);
+    g.fillRect(-4, -2.2, 12, 1.6);
+    g.fillStyle = W;
+    g.fillRect(-1, -4.6, 6, 2);
+    g.fillStyle = Wd;
+    g.fillRect(-1, -2.8, 6, 0.6);
     g.restore();
   };
   const leg = (fx: number, fy: number) => {
@@ -345,6 +345,17 @@ function heroDraw(g: CanvasRenderingContext2D, d: PoseDef) {
   ell(0, -8 + by, 10, 10, B);
   ell(-4, -13 + by, 5, 3.5, Bl, -0.5);
   g.restore();
+  // signature lightning-bolt marking on the forehead
+  g.fillStyle = Y;
+  g.beginPath();
+  g.moveTo(0, -18 + by);
+  g.lineTo(-2.5, -13 + by);
+  g.lineTo(-0.5, -13 + by);
+  g.lineTo(-2.5, -8.5 + by);
+  g.lineTo(1.5, -14 + by);
+  g.lineTo(-0.5, -14 + by);
+  g.closePath();
+  g.fill();
   // ears
   for (const ex of [-6, 5]) {
     g.fillStyle = K;
@@ -426,7 +437,7 @@ export function heroSprite(pose: HeroPose): Sprite {
 
 export function heroBall(frame: number): Sprite {
   return pixelSprite(`heroball:${frame}`, 36, 36, 18, 18, (g) => {
-    const { K, B, Bd, Bl, S, R, W } = PAL;
+    const { K, B, Bd, Bl, S, R, Y } = PAL;
     const r = 13;
     g.rotate((frame / 4) * (Math.PI / 3));
     g.fillStyle = K;
@@ -470,8 +481,10 @@ export function heroBall(frame: number): Sprite {
     g.beginPath();
     g.arc(-5, 7, 3.2, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = W;
-    g.fillRect(-6, 5, 3, 1.2);
+    g.fillStyle = Y;
+    g.fillRect(-6, 6, 3, 1.2);
+    g.fillRect(-2, -8, 1.5, 4);
+    g.fillRect(-3, -5, 1.5, 3);
   });
 }
 
