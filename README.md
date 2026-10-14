@@ -4,6 +4,10 @@ A five-zone, Sonic-style 2D speed platformer that runs in the browser. Everythin
 
 ## Play
 
+Hosted build: https://aifunmobi.github.io/my_sonic/ (deployed from `main` by the GitHub Pages workflow).
+
+Local:
+
 ```sh
 npm install
 npm run dev      # http://localhost:8080
