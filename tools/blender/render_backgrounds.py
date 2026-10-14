@@ -469,7 +469,10 @@ def zone_ruins(outdir):
         plane(f"cap{k}", cx, 598, base + 61 + (k % 2) * 20, 20, 5, stone, far, rot=(math.pi / 2, 0, 0))
     plane("archl", 250, 600, base + 25, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
     plane("archr", 310, 600, base + 25, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
-    cylinder("archtop", 280, 600, base + 50, 32, 10, stone, far, rot=(math.pi / 2, 0, 0), verts=32)
+    # arch: a half ring built from short blocks so the side camera sees an arch, not a disc
+    for k in range(9):
+        a = math.pi * k / 8
+        plane(f"arch{k}", 280 + math.cos(a) * 30, 600, base + 50 + math.sin(a) * 30, 12, 12, stone, far, rot=(math.pi / 2, 0, a))
     plane("farfill", CAM_W / 2, 610, (HORIZON + 30 + base) / 2, CAM_W + 80, base - HORIZON - 30, stone, far, rot=(math.pi / 2, 0, 0))
     # mid: temples with lit windows, misted hills
     stone2 = material("stone2", "#3c2e74", rough=1.0)
