@@ -13,5 +13,11 @@
   },
   "width": 960,
   "height": 540,
-  "scale": 2
+  "scale": 2,
+  "layerWidths": {
+    "sky": 960,
+    "far": 960,
+    "mid": 1920,
+    "near": 2880
+  }
 }
