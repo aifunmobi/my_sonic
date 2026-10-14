@@ -11,11 +11,12 @@ and renders the layers separately with alpha so the game can scroll them at
 different parallax rates. Every layer is horizontally seamless: all geometry
 is generated from functions periodic over the layer width.
 
-Output per zone (width = 480 * scale, height = 270 * scale):
-    <zone>/sky.png   opaque, static
-    <zone>/far.png   alpha, slowest parallax
-    <zone>/mid.png   alpha
-    <zone>/near.png  alpha, fastest parallax
+Output per zone (height = 270 * scale; widths differ per layer so landmarks
+repeat less often: sky and far are 1 screen wide, mid 2 screens, near 3):
+    <zone>/sky.png   opaque, static, 480*scale wide
+    <zone>/far.png   alpha, slowest parallax, 480*scale wide
+    <zone>/mid.png   alpha, 960*scale wide
+    <zone>/near.png  alpha, fastest parallax, 1440*scale wide
     <zone>/layers.json  parallax rates + vertical anchors for the game
 """
 import json
@@ -54,9 +55,13 @@ while i < len(argv):
 
 W = 480 * SCALE
 H = 270 * SCALE
-# World units: 1 unit = 1 game pixel at 480x270. Camera covers x in [0, 480], y in [0, 270].
+# World units: 1 unit = 1 game pixel at 480x270. The camera covers y in [0, 270]
+# and x in [0, layer width]. Layer widths (in screens): sky 1, far 1, mid 2, near 3.
 CAM_W = 480.0
 CAM_H = 270.0
+LAYER_W = {"sky": CAM_W, "far": CAM_W, "mid": CAM_W * 2, "near": CAM_W * 3}
+# The playfield hides everything below this height most of the time.
+HORIZON = 108.0
 
 
 def srgb(hexstr, alpha=1.0):
@@ -165,7 +170,9 @@ def mesh_from_pydata(name, verts, faces, mat, coll, smooth=False):
     return ob
 
 
-def ridge(name, fn, y, zbase, mat, coll, depth=40.0, step=2.0, xmin=-40.0, xmax=CAM_W + 40.0):
+def ridge(name, fn, y, zbase, mat, coll, depth=40.0, step=2.0, xmin=-40.0, xmax=None, width=CAM_W):
+    if xmax is None:
+        xmax = width + 40.0
     """Extruded silhouette: top edge follows fn(x), extends down to zbase, with depth in Y."""
     xs = [xmin + k * step for k in range(int((xmax - xmin) / step) + 1)]
     verts = []
@@ -230,12 +237,34 @@ def cone(name, x, y, z, r, h, mat, coll, rot=(0, 0, 0)):
     return ob
 
 
-def periodic(x, terms):
-    """Sum of sines with integer numbers of periods over CAM_W so the layer tiles."""
+def periodic(x, terms, width=CAM_W):
+    """Sum of sines with integer numbers of periods over the layer width so it tiles."""
     v = 0.0
     for amp, periods, phase in terms:
-        v += amp * math.sin(2 * math.pi * periods * x / CAM_W + phase)
+        v += amp * math.sin(2 * math.pi * periods * x / width + phase)
     return v
+
+
+MW = CAM_W * 2  # mid layer width
+NW = CAM_W * 3  # near layer width
+
+
+def vertical_water(name, zbot, ztop, top_col, bot_col, coll, y, width, spec=0.9):
+    """Backdrop water/lava: a vertical plane with a height gradient (seen face-on by the side camera)."""
+    m = gradient_material(name + "_mat", top_col, bot_col, zbot, ztop)
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.25
+    try:
+        bsdf.inputs["Specular IOR Level"].default_value = spec
+    except KeyError:
+        pass
+    return plane(name, width / 2, y, (zbot + ztop) / 2, width + 80, ztop - zbot, m, coll, rot=(math.pi / 2, 0, 0))
+
+
+def sparkles(prefix, z, count, width, coll, y, color="#ffffff", strength=3.0, r=0.9):
+    m = material(prefix + "_m", color, emit=color, emit_strength=strength)
+    for k in range(count):
+        sphere(f"{prefix}{k}", (k * 131.7) % width, y, z + (k * 7) % 18, r, m, coll, seg=6)
 
 
 def sun_light(energy=4.0, angle_deg=(55, 0, 35), color=(1, 0.95, 0.85)):
@@ -290,6 +319,12 @@ def tree_round(x, y, z, scale, coll, trunk_mat, leaf_mat):
 def render_layer(sc, colls, name, outdir, keep):
     for c in colls:
         c.hide_render = c.name not in keep
+    lw = LAYER_W[name]
+    cam = sc.camera
+    cam.data.ortho_scale = lw
+    cam.location.x = lw / 2
+    sc.render.resolution_x = int(lw * SCALE)
+    sc.render.resolution_y = H
     sc.render.filepath = os.path.join(outdir, name + ".png")
     bpy.ops.render.render(write_still=True)
 
@@ -303,76 +338,66 @@ def zone_emerald(outdir):
     mid = new_collection("mid")
     near = new_collection("near")
 
-    # sky dome: big gradient plane behind everything + sun + clouds
+    # --- sky (1 screen): gradient, sun, soft clouds ---
     plane("skyplane", CAM_W / 2, 1200, CAM_H / 2, CAM_W * 3, CAM_H * 3, gradient_material("skymat", "#1c58c8", "#a8dcff", 0, CAM_H), sky, rot=(math.pi / 2, 0, 0))
-    sphere("sun", 380, 900, 226, 22, material("sunmat", "#fff6b0", emit="#fff2a0", emit_strength=6), sky)
+    sphere("sun", 380, 900, 228, 22, material("sunmat", "#fff6b0", emit="#fff2a0", emit_strength=6), sky)
     cloud_mat = material("cloud", "#ffffff", rough=1.0, emit="#ffffff", emit_strength=0.25)
-    for cx, cz, s in [(40, 232, 1.0), (210, 204, 0.7), (330, 244, 1.2), (470, 194, 0.8)]:
+    for cx, cz, sc_ in [(40, 236, 1.0), (210, 212, 0.7), (330, 248, 1.2), (470, 204, 0.8)]:
         for dx, dz, r in [(0, 0, 11), (13, 5, 13), (28, 0, 11), (14, -4, 10)]:
-            sphere(f"cl{cx}_{dx}", cx + dx * s, 800, cz + dz * s, r * s, cloud_mat, sky, seg=14)
+            sphere(f"cl{cx}_{dx}", cx + dx * sc_, 800, cz + dz * sc_, r * sc_, cloud_mat, sky, seg=14)
 
-    # far mountains: two ridges, bluish, snow caps
+    # --- far (1 screen): two mountain ridges with snow, above the horizon ---
     mtn1 = material("mtn1", "#2f5cb8", rough=1.0)
     mtn2 = material("mtn2", "#3d6fc4", rough=1.0)
     snow = material("snow", "#e8f0ff", rough=1.0, emit="#e8f0ff", emit_strength=0.2)
-    f1 = lambda x: 142 + periodic(x, [(28, 1, 0.0), (12, 3, 1.0), (8, 5, 2.0), (5, 9, 0.5)])
-    f2 = lambda x: 124 + periodic(x, [(22, 2, 1.5), (10, 4, 0.3), (6, 7, 2.6)])
-    ridge("mtn_far", f1, 600, 0, mtn1, far, depth=60)
-    ridge("mtn_near", f2, 520, 0, mtn2, far, depth=60)
-    # snow caps on the far ridge peaks
+    f1 = lambda x: 196 + periodic(x, [(26, 1, 0.0), (12, 3, 1.0), (8, 5, 2.0), (5, 9, 0.5)])
+    f2 = lambda x: 176 + periodic(x, [(20, 2, 1.5), (10, 4, 0.3), (6, 7, 2.6)])
+    ridge("mtn_far", f1, 600, HORIZON + 30, mtn1, far, depth=60)
+    ridge("mtn_near", f2, 520, HORIZON + 30, mtn2, far, depth=60)
     for px_ in range(0, 481, 4):
-        if f1(px_) > 158:
+        if f1(px_) > 212:
             sphere(f"snow{px_}", px_, 598, f1(px_) - 1, 5, snow, far, seg=8)
-    # waterfall cliff
+
+    # --- mid (2 screens): sea backdrop, cliff with waterfall, islands ---
+    vertical_water("sea", HORIZON - 40, 168, "#3b8ff0", "#163f90", mid, 470, MW)
+    sparkles("seaspark", 150, 40, MW, mid, 465, strength=2.0, r=0.7)
     cliff = material("cliff", "#7a4a1e", rough=1.0)
     grasst = material("grasstop", "#2f9e33", rough=1.0)
     water = material("water", "#3f8fe8", rough=0.2, spec=0.8, emit="#8fd0ff", emit_strength=0.3)
     foam = material("foam", "#ffffff", rough=1.0, emit="#ffffff", emit_strength=0.5)
+    leafd = material("leafd", "#1e7a2a", rough=1.0)
     cx = 300
-    plane("cliffbody", cx, 450, 130, 120, 70, cliff, mid, rot=(math.pi / 2, 0, 0))
-    plane("clifftop", cx, 450, 166, 124, 6, grasst, mid, rot=(math.pi / 2, 0, 0))
-    plane("fall", cx + 10, 440, 128, 20, 68, water, mid, rot=(math.pi / 2, 0, 0))
+    plane("cliffbody", cx, 450, 190, 120, 60, cliff, mid, rot=(math.pi / 2, 0, 0))
+    plane("cliffshade", cx + 55, 449, 190, 10, 60, material("cliffsh", "#5a3412", rough=1.0), mid, rot=(math.pi / 2, 0, 0))
+    plane("clifftop", cx, 450, 221, 124, 6, grasst, mid, rot=(math.pi / 2, 0, 0))
+    plane("fall", cx + 10, 440, 188, 20, 58, water, mid, rot=(math.pi / 2, 0, 0))
     for k in range(6):
-        sphere(f"foam{k}", cx + 2 + k * 3.5, 436, 96, 3, foam, mid, seg=8)
-    palm(cx - 48, 445, 166, 0.8, mid, cliff, material("leafd", "#1e7a2a", rough=1.0))
-    palm(cx + 52, 445, 166, 0.7, mid, cliff, material("leafd2", "#2a9a3a", rough=1.0))
-    # ocean: glossy plane with slight waves
-    sea = material("sea", "#1f5fc8", rough=0.15, spec=0.9)
-    seaob = plane("sea", CAM_W / 2, 300, 95, CAM_W * 2, 700, sea, mid, rot=(0, 0, 0))
-    bpy.context.view_layer.objects.active = seaob
-    bpy.ops.object.select_all(action="DESELECT")
-    seaob.select_set(True)
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.subdivide(number_cuts=60)
-    bpy.ops.object.mode_set(mode="OBJECT")
-    for v in seaob.data.vertices:
-        wx = v.co.x * seaob.scale.x
-        wy = v.co.y * seaob.scale.y
-        v.co.z += (math.sin(wx * 0.3) * 0.6 + math.sin(wy * 0.2 + wx * 0.1) * 0.8) / 1.0
-    # distant island
+        sphere(f"foam{k}", cx + 2 + k * 3.5, 436, 161, 3, foam, mid, seg=8)
+    palm(cx - 48, 445, 222, 0.8, mid, cliff, leafd)
+    palm(cx + 52, 445, 222, 0.7, mid, cliff, material("leafd2", "#2a9a3a", rough=1.0))
     isl = material("isl", "#1e6a2a", rough=1.0)
-    sphere("island", 120, 420, 92, 26, isl, mid, seg=16)
-    palm(120, 400, 100, 0.5, mid, cliff, isl)
-    # near hills with flowers and trees
+    for k, ix in enumerate((120, 640, 840)):
+        sphere(f"island{k}", ix, 420, 150, 26 - k * 4, isl, mid, seg=16)
+        palm(ix, 400, 160, 0.5, mid, cliff, isl)
+
+    # --- near (3 screens): rolling hills with trees and flowers ---
     hill = material("hill", "#3f9f3a", rough=1.0)
     hill2 = material("hill2", "#2f8a2f", rough=1.0)
-    fh = lambda x: 56 + periodic(x, [(14, 2, 1.0), (5, 6, 0.4)])
-    fh2 = lambda x: 40 + periodic(x, [(10, 3, 2.2), (4, 8, 1.1)])
-    ridge("hill_a", fh, 160, -20, hill, near, depth=90)
-    ridge("hill_b", fh2, 120, -20, hill2, near, depth=90)
+    fh = lambda x: 150 + periodic(x, [(14, 4, 1.0), (5, 13, 0.4)], NW)
+    fh2 = lambda x: 132 + periodic(x, [(10, 7, 2.2), (4, 17, 1.1)], NW)
+    ridge("hill_a", fh, 160, HORIZON - 40, hill, near, depth=90, width=NW)
+    ridge("hill_b", fh2, 120, HORIZON - 40, hill2, near, depth=90, width=NW)
     trunk = material("trunk", "#6a3f18", rough=1.0)
     leaf = material("leaf", "#2a9a3a", rough=1.0)
-    for tx in (60, 250, 430):
+    for tx in (60, 250, 430, 620, 810, 1000, 1190, 1380):
         tree_round(tx, 150, fh(tx) - 4, 0.6, near, trunk, leaf)
     fl = material("flower", "#ffd23f", rough=1.0, emit="#ffd23f", emit_strength=0.4)
-    for k in range(18):
-        fx = (k * 29) % 480
+    for k in range(54):
+        fx = (k * 29) % NW
         sphere(f"fl{k}", fx, 118 - (k % 3) * 8, fh2(fx) - 6 - (k % 3) * 6, 1.6, fl, near, seg=8)
     colls = [sky, far, mid, near]
-    render_layer(sc, colls, "sky", outdir, {"sky"})
-    render_layer(sc, colls, "far", outdir, {"far"})
-    render_layer(sc, colls, "mid", outdir, {"mid"})
-    render_layer(sc, colls, "near", outdir, {"near"})
+    for name in ("sky", "far", "mid", "near"):
+        render_layer(sc, colls, name, outdir, {name})
     return {"sky": {"rate": 0.0}, "far": {"rate": 0.1}, "mid": {"rate": 0.25}, "near": {"rate": 0.5}}
 
 
@@ -385,40 +410,39 @@ def zone_sunset(outdir):
     mid = new_collection("mid")
     near = new_collection("near")
     plane("skyplane", CAM_W / 2, 1200, CAM_H / 2, CAM_W * 3, CAM_H * 3, gradient_material("skymat", "#4a2a7a", "#ffc46a", 0, CAM_H), sky, rot=(math.pi / 2, 0, 0))
-    sphere("sun", 300, 900, 176, 32, material("sunmat", "#ffe08a", emit="#ffd060", emit_strength=8), sky)
+    sphere("sun", 300, 900, 186, 32, material("sunmat", "#ffe08a", emit="#ffd060", emit_strength=8), sky)
     dune1 = material("dune1", "#7a3a6a", rough=1.0)
     dune2 = material("dune2", "#8a4a6a", rough=1.0)
-    ridge("dune_far", lambda x: 130 + periodic(x, [(18, 1, 0.2), (8, 4, 1.4)]), 600, 0, dune1, far, depth=80)
-    ridge("dune_mid", lambda x: 116 + periodic(x, [(14, 2, 2.0), (6, 5, 0.6)]), 520, 0, dune2, far, depth=80)
-    # lighthouse rock
+    ridge("dune_far", lambda x: 186 + periodic(x, [(18, 1, 0.2), (8, 4, 1.4)]), 600, HORIZON + 30, dune1, far, depth=80)
+    ridge("dune_mid", lambda x: 172 + periodic(x, [(14, 2, 2.0), (6, 5, 0.6)]), 520, HORIZON + 30, dune2, far, depth=80)
+    # mid: sea, lighthouse, boats
+    vertical_water("sea", HORIZON - 40, 164, "#f08a5a", "#6a2a4a", mid, 470, MW)
+    sparkles("seaspark", 148, 40, MW, mid, 465, color="#ffe0b0", strength=2.5, r=0.7)
     rock = material("rock", "#5a2a4a", rough=1.0)
     white = material("white", "#e8e8f0", rough=0.8)
     red = material("red", "#e84040", rough=0.8)
     lamp = material("lamp", "#fff6a0", emit="#fff6a0", emit_strength=10)
-    sphere("lrock", 360, 460, 84, 30, rock, mid, seg=14)
-    cylinder("ltower", 360, 450, 118, 7, 46, white, mid)
-    cylinder("lband1", 360, 449, 112, 7.3, 6, red, mid)
-    cylinder("lband2", 360, 449, 128, 7.3, 6, red, mid)
-    sphere("llamp", 360, 450, 145, 6, lamp, mid, seg=10)
-    sea = material("sea2", "#c8504a", rough=0.12, spec=1.0)
-    plane("sea", CAM_W / 2, 300, 90, CAM_W * 2, 700, sea, mid)
+    sphere("lrock", 360, 460, 150, 30, rock, mid, seg=14)
+    cylinder("ltower", 360, 450, 186, 7, 50, white, mid)
+    cylinder("lband1", 360, 449, 178, 7.3, 6, red, mid)
+    cylinder("lband2", 360, 449, 196, 7.3, 6, red, mid)
+    sphere("llamp", 360, 450, 214, 6, lamp, mid, seg=10)
     sail = material("sail", "#2a1030", rough=1.0)
-    for bx in (90, 240):
-        plane("hull", bx, 420, 92, 24, 4, sail, mid, rot=(math.pi / 2, 0, 0))
-        cone("sailc", bx + 2, 418, 104, 7, 20, sail, mid)
+    for bx in (90, 240, 600, 820):
+        plane(f"hull{bx}", bx, 420, 158, 24, 4, sail, mid, rot=(math.pi / 2, 0, 0))
+        cone(f"sailc{bx}", bx + 2, 418, 170, 7, 20, sail, mid)
+    # near: dunes with palms and umbrellas
     sand = material("sand", "#d8a860", rough=1.0)
     sand2 = material("sand2", "#e0a850", rough=1.0)
-    ridge("sand_a", lambda x: 54 + periodic(x, [(12, 2, 0.4), (4, 7, 1.0)]), 160, -20, sand, near, depth=90)
-    ridge("sand_b", lambda x: 40 + periodic(x, [(10, 3, 2.1), (3, 9, 0.2)]), 120, -20, sand2, near, depth=90)
+    ridge("sand_a", lambda x: 148 + periodic(x, [(12, 4, 0.4), (4, 15, 1.0)], NW), 160, HORIZON - 40, sand, near, depth=90, width=NW)
+    ridge("sand_b", lambda x: 132 + periodic(x, [(10, 7, 2.1), (3, 19, 0.2)], NW), 120, HORIZON - 40, sand2, near, depth=90, width=NW)
     trunk = material("trunk", "#6a3f18", rough=1.0)
     leaf = material("leaf", "#2a9a3a", rough=1.0)
-    for tx in (40, 300, 440):
-        palm(tx, 150, 50, 0.7, near, trunk, leaf, lean=0.25)
+    for tx in (40, 300, 520, 760, 980, 1240, 1400):
+        palm(tx, 150, 142, 0.7, near, trunk, leaf, lean=0.25)
     colls = [sky, far, mid, near]
-    render_layer(sc, colls, "sky", outdir, {"sky"})
-    render_layer(sc, colls, "far", outdir, {"far"})
-    render_layer(sc, colls, "mid", outdir, {"mid"})
-    render_layer(sc, colls, "near", outdir, {"near"})
+    for name in ("sky", "far", "mid", "near"):
+        render_layer(sc, colls, name, outdir, {name})
     return {"sky": {"rate": 0.0}, "far": {"rate": 0.1}, "mid": {"rate": 0.25}, "near": {"rate": 0.5}}
 
 
@@ -432,44 +456,51 @@ def zone_ruins(outdir):
     near = new_collection("near")
     plane("skyplane", CAM_W / 2, 1200, CAM_H / 2, CAM_W * 3, CAM_H * 3, gradient_material("skymat", "#1a1040", "#7a58b0", 0, CAM_H), sky, rot=(math.pi / 2, 0, 0))
     moon = material("moon", "#f0f0d8", emit="#f0f0d8", emit_strength=3)
-    sphere("moon", 390, 900, 224, 20, moon, sky)
+    sphere("moon", 390, 900, 226, 20, moon, sky)
     starm = material("star", "#ffffff", emit="#ffffff", emit_strength=6)
     for k in range(70):
-        sphere(f"st{k}", (k * 97) % 480, 950, 150 + (k * 53) % 118, 0.7 + (k % 3) * 0.3, starm, sky, seg=6)
+        sphere(f"st{k}", (k * 97) % 480, 950, 160 + (k * 53) % 108, 0.7 + (k % 3) * 0.3, starm, sky, seg=6)
+    # far: ruin silhouettes
     stone = material("stone", "#2a2058", rough=1.0)
-    stone2 = material("stone2", "#3c2e74", rough=1.0)
+    base = HORIZON + 70
     for k in range(5):
         cx = 30 + k * 100
-        cylinder(f"col{k}", cx, 600, 100, 6, 60 + (k % 2) * 20, stone, far)
-        plane(f"cap{k}", cx, 598, 131 + (k % 2) * 10, 20, 5, stone, far, rot=(math.pi / 2, 0, 0))
-    plane("archl", 250, 600, 100, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
-    plane("archr", 310, 600, 100, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
-    cylinder("archtop", 280, 600, 125, 32, 10, stone, far, rot=(math.pi / 2, 0, 0), verts=32)
-    plane("temple", 120, 520, 110, 70, 60, stone2, far, rot=(math.pi / 2, 0, 0))
-    plane("templeroof", 120, 519, 142, 90, 6, stone2, far, rot=(math.pi / 2, 0, 0))
-    win = material("win", "#1a1040", rough=1.0)
-    for wy in range(3):
-        for wx in range(4):
-            plane(f"w{wx}{wy}", 95 + wx * 16, 517, 96 + wy * 14, 6, 9, win, far, rot=(math.pi / 2, 0, 0))
+        cylinder(f"col{k}", cx, 600, base + 30 + (k % 2) * 10, 6, 60 + (k % 2) * 20, stone, far)
+        plane(f"cap{k}", cx, 598, base + 61 + (k % 2) * 20, 20, 5, stone, far, rot=(math.pi / 2, 0, 0))
+    plane("archl", 250, 600, base + 25, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
+    plane("archr", 310, 600, base + 25, 10, 50, stone, far, rot=(math.pi / 2, 0, 0))
+    cylinder("archtop", 280, 600, base + 50, 32, 10, stone, far, rot=(math.pi / 2, 0, 0), verts=32)
+    plane("farfill", CAM_W / 2, 610, (HORIZON + 30 + base) / 2, CAM_W + 80, base - HORIZON - 30, stone, far, rot=(math.pi / 2, 0, 0))
+    # mid: temples with lit windows, misted hills
+    stone2 = material("stone2", "#3c2e74", rough=1.0)
+    win = material("win", "#ffd890", emit="#ffd890", emit_strength=2)
+    for tx in (120, 560, 800):
+        plane(f"temple{tx}", tx, 520, base + 10, 70, 60, stone2, mid, rot=(math.pi / 2, 0, 0))
+        plane(f"templeroof{tx}", tx, 519, base + 42, 90, 6, stone2, mid, rot=(math.pi / 2, 0, 0))
+        for wy in range(3):
+            for wx in range(4):
+                if (wx + wy + tx) % 3:
+                    plane(f"w{tx}{wx}{wy}", tx - 25 + wx * 16, 517, base - 4 + wy * 14, 6, 9, win, mid, rot=(math.pi / 2, 0, 0))
     hill = material("hillr", "#2f6a4a", rough=1.0)
-    hill2 = material("hillr2", "#3f8a5a", rough=1.0)
-    ridge("rh1", lambda x: 78 + periodic(x, [(16, 2, 1.0), (6, 6, 0.4)]), 300, -20, hill, mid, depth=80)
-    ridge("rh2", lambda x: 58 + periodic(x, [(12, 3, 2.2), (5, 8, 1.4)]), 220, -20, hill2, mid, depth=80)
+    ridge("rh1", lambda x: 160 + periodic(x, [(16, 3, 1.0), (6, 11, 0.4)], MW), 300, HORIZON - 40, hill, mid, depth=80, width=MW)
     mist = material("mist", "#c8d0ff", rough=1.0, alpha=0.25)
-    plane("mist", CAM_W / 2, 200, 60, CAM_W * 2, 30, mist, mid, rot=(math.pi / 2, 0, 0))
+    plane("mist", MW / 2, 200, 150, MW + 80, 30, mist, mid, rot=(math.pi / 2, 0, 0))
+    # near: closer hills, vines from the top, fireflies
+    hill2 = material("hillr2", "#3f8a5a", rough=1.0)
+    ridge("rh2", lambda x: 140 + periodic(x, [(12, 5, 2.2), (5, 17, 1.4)], NW), 220, HORIZON - 40, hill2, near, depth=80, width=NW)
     vine = material("vine", "#1e5a3a", rough=1.0)
-    for k, (vx, ln) in enumerate([(20, 40), (60, 70), (95, 30), (130, 55), (180, 45), (220, 70), (255, 35), (290, 60), (340, 50), (380, 75), (420, 40), (460, 60)]):
+    for k in range(36):
+        vx = (k * 97 + 20) % NW
+        ln = 30 + (k * 23) % 50
         cylinder(f"vine{k}", vx, 150, CAM_H - ln / 2, 1, ln, vine, near)
-        for s in range(0, ln, 9):
-            sphere(f"vl{k}_{s}", vx + (3 if s % 2 else -3), 150, CAM_H - s - 4, 2.2, vine, near, seg=8)
+        for s_ in range(0, ln, 9):
+            sphere(f"vl{k}_{s_}", vx + (3 if s_ % 2 else -3), 150, CAM_H - s_ - 4, 2.2, vine, near, seg=8)
     ff = material("ff", "#dcff78", emit="#dcff78", emit_strength=8)
-    for k in range(14):
-        sphere(f"ff{k}", (k * 97) % 480, 140, 60 + (k * 23) % 80, 1.0, ff, near, seg=6)
+    for k in range(40):
+        sphere(f"ff{k}", (k * 97) % NW, 140, 120 + (k * 23) % 80, 1.0, ff, near, seg=6)
     colls = [sky, far, mid, near]
-    render_layer(sc, colls, "sky", outdir, {"sky"})
-    render_layer(sc, colls, "far", outdir, {"far"})
-    render_layer(sc, colls, "mid", outdir, {"mid"})
-    render_layer(sc, colls, "near", outdir, {"near"})
+    for name in ("sky", "far", "mid", "near"):
+        render_layer(sc, colls, name, outdir, {name})
     return {"sky": {"rate": 0.0}, "far": {"rate": 0.12}, "mid": {"rate": 0.3}, "near": {"rate": 0.6}}
 
 
@@ -485,48 +516,49 @@ def zone_magma(outdir):
     cave = material("cave", "#2a0a10", rough=1.0)
     cave2 = material("cave2", "#3a1218", rough=1.0)
     glow = material("glow", "#ff8a30", emit="#ff8a30", emit_strength=6)
-    # ceilings as inverted ridges
-    def ceil_fn(x, base, amp):
-        return CAM_H - base - abs(periodic(x, [(amp, 6, 0.0), (amp * 0.4, 13, 1.0)]))
-    def ceiling(name, base, amp, y, mat, coll):
-        xs = [-40 + k * 3 for k in range(int(560 / 3) + 1)]
+
+    def ceil_fn(x, base, amp, width):
+        return CAM_H - base - abs(periodic(x, [(amp, 6, 0.0), (amp * 0.4, 13, 1.0)], width))
+
+    def ceiling(name, base, amp, y, mat, coll, width):
+        xs = [-40 + k * 3 for k in range(int((width + 80) / 3) + 1)]
         verts, faces = [], []
         for x in xs:
             verts.append((x, y, CAM_H + 10))
-            verts.append((x, y, ceil_fn(x, base, amp)))
+            verts.append((x, y, ceil_fn(x, base, amp, width)))
         for k in range(len(xs) - 1):
             a = k * 2
             faces.append((a, a + 1, a + 3, a + 2))
         mesh_from_pydata(name, verts, faces, mat, coll)
-    ceiling("ceil1", 30, 36, 600, cave, far)
-    ceiling("ceil2", 50, 36, 520, cave2, far)
+
+    ceiling("ceil1", 30, 36, 600, cave, far, CAM_W)
+    ceiling("ceil2", 50, 36, 520, cave2, far, CAM_W)
     for k in range(10):
         gx = 24 + k * 48
-        sphere(f"tip{k}", gx, 518, ceil_fn(gx, 50, 36) - 1, 2.0, glow, far, seg=8)
+        sphere(f"tip{k}", gx, 518, ceil_fn(gx, 50, 36, CAM_W) - 1, 2.0, glow, far, seg=8)
+    # mid: lava sea, rock pillars, lava falls
+    vertical_water("lavasea", HORIZON - 40, 150, "#ffb030", "#8a1800", mid, 470, MW, spec=0.5)
+    sparkles("lavaspark", 136, 30, MW, mid, 465, color="#ffe080", strength=6, r=1.2)
     pillar = material("pillar", "#3a1a18", rough=1.0)
-    for px_, w, h in [(80, 26, 110), (250, 18, 80), (400, 30, 130)]:
-        plane(f"pil{px_}", px_, 450, 80 + h / 2 - 40, w, h + 40, pillar, mid, rot=(math.pi / 2, 0, 0))
-        plane(f"pilg{px_}", px_ - w / 2 + 8, 449, 100, 2, 12, glow, mid, rot=(math.pi / 2, 0, 0))
+    for px_, w, h in [(80, 26, 110), (250, 18, 80), (400, 30, 130), (600, 22, 90), (760, 28, 120), (900, 16, 70)]:
+        plane(f"pil{px_}", px_, 450, HORIZON + h / 2, w, h + 60, pillar, mid, rot=(math.pi / 2, 0, 0))
+        plane(f"pilg{px_}", px_ - w / 2 + 8, 449, HORIZON + 40, 2, 12, glow, mid, rot=(math.pi / 2, 0, 0))
     lava = material("lava", "#ff7a1a", rough=0.6, emit="#ff6a10", emit_strength=3)
-    lavab = material("lavab", "#ffd040", rough=0.6, emit="#ffd040", emit_strength=5)
-    plane("lavafall", 330, 440, 115, 14, 70, lava, mid, rot=(math.pi / 2, 0, 0))
-    plane("lavasea", CAM_W / 2, 300, 80, CAM_W * 2, 700, lava, mid)
-    for k in range(12):
-        sphere(f"lb{k}", (k * 41) % 480, 230 - (k % 4) * 30, 82, 2 + (k % 3), lavab, mid, seg=8)
+    for fx in (330, 700):
+        plane(f"lavafall{fx}", fx, 440, 190, 14, 80, lava, mid, rot=(math.pi / 2, 0, 0))
+    # near: dark rock bank, crystals, embers
     bank = material("bank", "#2a1210", rough=1.0)
-    ridge("bank", lambda x: 44 + periodic(x, [(10, 2, 0.5), (4, 7, 1.9)]), 160, -20, bank, near, depth=90)
+    ridge("bank", lambda x: 136 + periodic(x, [(10, 5, 0.5), (4, 19, 1.9)], NW), 160, HORIZON - 40, bank, near, depth=90, width=NW)
     crystal = material("crystal", "#b060ff", rough=0.3, emit="#9a48e0", emit_strength=1.5, alpha=0.9)
-    for k, cx in enumerate((70, 330, 450)):
-        cone(f"cr{k}", cx, 150, 60, 6, 30, crystal, near)
-        cone(f"cr{k}b", cx - 8, 152, 55, 4, 20, crystal, near)
+    for k, cx in enumerate((70, 330, 450, 700, 900, 1100, 1300)):
+        cone(f"cr{k}", cx, 150, 150, 6, 30, crystal, near)
+        cone(f"cr{k}b", cx - 8, 152, 145, 4, 20, crystal, near)
     ember = material("ember", "#ffd060", emit="#ff9040", emit_strength=8)
-    for k in range(20):
-        sphere(f"em{k}", (k * 53) % 480, 140, 30 + (k * 37) % 220, 0.8, ember, near, seg=6)
+    for k in range(60):
+        sphere(f"em{k}", (k * 53) % NW, 140, 120 + (k * 37) % 140, 0.8, ember, near, seg=6)
     colls = [sky, far, mid, near]
-    render_layer(sc, colls, "sky", outdir, {"sky"})
-    render_layer(sc, colls, "far", outdir, {"far"})
-    render_layer(sc, colls, "mid", outdir, {"mid"})
-    render_layer(sc, colls, "near", outdir, {"near"})
+    for name in ("sky", "far", "mid", "near"):
+        render_layer(sc, colls, name, outdir, {name})
     return {"sky": {"rate": 0.0}, "far": {"rate": 0.12}, "mid": {"rate": 0.3}, "near": {"rate": 0.5}}
 
 
@@ -541,36 +573,41 @@ def zone_sky(outdir):
     plane("skyplane", CAM_W / 2, 1200, CAM_H / 2, CAM_W * 3, CAM_H * 3, gradient_material("skymat", "#060a2a", "#5a7ad0", 0, CAM_H), sky, rot=(math.pi / 2, 0, 0))
     starm = material("star", "#ffffff", emit="#ffffff", emit_strength=6)
     for k in range(70):
-        sphere(f"st{k}", (k * 97) % 480, 950, 120 + (k * 53) % 148, 0.7 + (k % 3) * 0.3, starm, sky, seg=6)
+        sphere(f"st{k}", (k * 97) % 480, 950, 130 + (k * 53) % 138, 0.7 + (k % 3) * 0.3, starm, sky, seg=6)
     moon = material("moon", "#e8e8ff", emit="#e8e8ff", emit_strength=3)
-    sphere("moon", 80, 900, 220, 14, moon, sky)
+    sphere("moon", 80, 900, 230, 14, moon, sky)
     cloud = material("cloudf", "#c8d8ff", rough=1.0)
-    for k, (cx, cz, s) in enumerate([(30, 120, 1.6), (180, 100, 1.2), (300, 130, 1.8), (420, 95, 1.1)]):
+    for k, (cx, cz, s_) in enumerate([(30, 180, 1.6), (180, 160, 1.2), (300, 190, 1.8), (420, 155, 1.1)]):
         for dx, dz, r in [(0, 0, 11), (13, 5, 13), (28, 0, 11), (14, -4, 10)]:
-            sphere(f"fc{k}_{dx}", cx + dx * s, 600, cz + dz * s, r * s, cloud, far, seg=12)
+            sphere(f"fc{k}_{dx}", cx + dx * s_, 600, cz + dz * s_, r * s_, cloud, far, seg=12)
+    # mid: skyline (2 screens)
     tower = material("tower", "#1e2848", rough=0.9)
     tower2 = material("tower2", "#28345a", rough=0.9)
     winl = material("winl", "#ffe090", emit="#ffe090", emit_strength=4)
-    for k, (tx, th, tw) in enumerate([(0, 90, 28), (50, 120, 22), (90, 70, 36), (140, 140, 26), (180, 95, 30), (222, 115, 24), (270, 80, 30), (320, 130, 24), (370, 100, 34), (430, 115, 26)]):
-        plane(f"tw{k}", tx + tw / 2, 480, th / 2, tw, th, tower if k % 2 else tower2, mid, rot=(math.pi / 2, 0, 0))
+    towers = [(0, 90, 28), (50, 120, 22), (90, 70, 36), (140, 140, 26), (180, 95, 30), (222, 115, 24), (270, 80, 30), (320, 130, 24), (370, 100, 34), (430, 115, 26)]
+    towers += [(t[0] + 480, t[1] - 10 + (k % 3) * 12, t[2]) for k, t in enumerate(towers)]
+    for k, (tx, th, tw) in enumerate(towers):
+        plane(f"tw{k}", tx + tw / 2, 480, HORIZON - 30 + th / 2, tw, th + 60, tower if k % 2 else tower2, mid, rot=(math.pi / 2, 0, 0))
         for wy in range(8, th - 4, 9):
             for wx in range(4, tw - 4, 7):
                 if (wx * 7 + wy * 13) % 5 == 0:
-                    plane(f"wl{k}_{wx}_{wy}", tx + wx, 478, wy, 2, 3, winl, mid, rot=(math.pi / 2, 0, 0))
+                    plane(f"wl{k}_{wx}_{wy}", tx + wx, 478, HORIZON - 30 + wy, 2, 3, winl, mid, rot=(math.pi / 2, 0, 0))
+    # near: cloud sea and floating islands (3 screens)
     cloudn = material("cloudn", "#ffffff", rough=1.0)
-    for k, (cx, cz, s) in enumerate([(20, 20, 1.3), (150, 8, 1.0), (240, 25, 1.5), (360, 12, 1.2), (440, 22, 1.4)]):
+    for k in range(18):
+        cx = (k * 83) % NW
+        cz = 112 + (k * 17) % 24
+        s_ = 1.0 + (k % 3) * 0.25
         for dx, dz, r in [(0, 0, 11), (13, 5, 13), (28, 0, 11), (14, -4, 10)]:
-            sphere(f"nc{k}_{dx}", cx + dx * s, 160, cz + dz * s, r * s, cloudn, near, seg=12)
+            sphere(f"nc{k}_{dx}", cx + dx * s_, 160, cz + dz * s_, r * s_, cloudn, near, seg=12)
     rockm = material("rockm", "#4a5068", rough=1.0)
     grassm = material("grassm", "#e0b030", rough=1.0)
-    for k, ix in enumerate((120, 400)):
-        cone(f"isl{k}", ix, 150, 60, 30, 30, rockm, near, rot=(math.pi, 0, 0))
-        plane(f"islt{k}", ix, 149, 75, 60, 4, grassm, near, rot=(math.pi / 2, 0, 0))
+    for k, ix in enumerate((120, 400, 760, 1100, 1350)):
+        cone(f"isl{k}", ix, 150, 150, 30, 30, rockm, near, rot=(math.pi, 0, 0))
+        plane(f"islt{k}", ix, 149, 165, 60, 4, grassm, near, rot=(math.pi / 2, 0, 0))
     colls = [sky, far, mid, near]
-    render_layer(sc, colls, "sky", outdir, {"sky"})
-    render_layer(sc, colls, "far", outdir, {"far"})
-    render_layer(sc, colls, "mid", outdir, {"mid"})
-    render_layer(sc, colls, "near", outdir, {"near"})
+    for name in ("sky", "far", "mid", "near"):
+        render_layer(sc, colls, name, outdir, {name})
     return {"sky": {"rate": 0.0}, "far": {"rate": 0.1}, "mid": {"rate": 0.25}, "near": {"rate": 0.5}}
 
 
@@ -587,6 +624,7 @@ if __name__ == "__main__":
         meta["width"] = W
         meta["height"] = H
         meta["scale"] = SCALE
+        meta["layerWidths"] = {k: int(v * SCALE) for k, v in LAYER_W.items()}
         with open(os.path.join(outdir, "layers.json"), "w") as f:
             json.dump(meta, f, indent=2)
         print(f"   done {name}")
