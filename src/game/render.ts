@@ -4,6 +4,7 @@ import { formatTime, groundAtSegs } from "./terrain";
 import { LEVEL_NAMES } from "./levels";
 import { WATER_Y, type Game, type Particle, type Player } from "./game";
 import * as SP from "./sprites";
+import { bgSet } from "./bgassets";
 import type { Decor, Loop, Theme } from "./types";
 
 function px(g: CanvasRenderingContext2D, x: number, y: number, c: string, w = 1, h = 1) {
@@ -330,6 +331,11 @@ export class Renderer {
     const H = C.VIEW_H;
     const py = -cam.y * 0.1;
     const f = game.frame;
+    const rendered = bgSet(theme.id);
+    if (rendered) {
+      this.drawRenderedBackground(g, rendered, cam.x, py);
+      return;
+    }
     g.drawImage(ditherGradient(`sky:${theme.id}`, this.grads, W, H, [...theme.sky], 22), 0, 0);
 
     if (theme.stars) {
@@ -363,6 +369,23 @@ export class Renderer {
       default:
         this.bgSky(g, cam.x, py, f, theme);
     }
+  }
+
+  /** Blit pre-rendered layers, each tiled horizontally at its own parallax rate. */
+  private drawRenderedBackground(g: CanvasRenderingContext2D, set: NonNullable<ReturnType<typeof bgSet>>, camX: number, py: number) {
+    const W = C.VIEW_W;
+    const H = C.VIEW_H;
+    const s = set.scale;
+    const drawTiled = (img: HTMLImageElement, rate: number, dy: number) => {
+      const lw = img.width / s;
+      const lh = img.height / s;
+      const off = ((camX * rate) % lw + lw) % lw;
+      const y = Math.round(H - lh + dy);
+      for (let x = -off; x < W; x += lw) g.drawImage(img, 0, 0, img.width, img.height, Math.round(x), y, lw, lh);
+    };
+    g.imageSmoothingEnabled = false;
+    if (set.sky) drawTiled(set.sky.img, 0, 0);
+    for (const l of set.layers) drawTiled(l.img, l.rate, Math.round(py * (0.3 + l.rate)));
   }
 
   private sun(g: CanvasRenderingContext2D, x: number, y: number, r: number, col: string, banded = false) {
